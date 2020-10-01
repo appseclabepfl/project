@@ -13,13 +13,15 @@ webserver_IP= '10.20.20.2'
 CA_IP = '10.10.10.3'
 port = 5000
 
+BUFFER_SIZE = 1024
+
 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-context.load_cert_chain('/path/to/certchain.pem', '/path/to/private.key')       #TODO create valid certs and put them on the VMs
+context.load_cert_chain('../keys_and_certs/CA_certificate.pem', '../keys_and_certs/CA_TLS_pk.key')       #TODO create valid certs and put them on the VMs
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
 
     sock.bind((CA_IP, port))
-    sock.listen(5)
+    sock.listen(5)              #TODO how many concurrent connnections are we expecting ?
 
     with context.wrap_socket(sock, server_side=True) as ssock:
         conn, addr = ssock.accept()
@@ -51,39 +53,43 @@ def serve(conn):
 
     revoke_OK = 'revocationOK'
     revoke_FAIL = 'revocationFAIL'
-    cert_OK = 'newcertificateOK'
-    cert_FAIL = 'newcertificateFAIL'
 
-    request = conn.recv(1024)
 
-    if request == revoke_cert:
+    request = conn.recv(BUFFER_SIZE)
 
-        #lauch revocation process
+    if request == revoke_cert:      #lauch revocation process
+
+        userInfo = conn.recv(BUFFER_SIZE)
+
+        #TODO REVOKE CERTIFICATES HERE
+
+        
 
         #TODO send back confirmation of revocation or failure message
 
         conn.sendTo(revoke_OK, webserver_IP)
 
 
-    elif request == new_cert:
+    elif request == new_cert:       #launch creation of new certificate
 
-        #launch creation of new certificate
+        #listen for user informations (should be less than 1024 byte)
 
+        userInfo = conn.recv(BUFFER_SIZE)
+
+        #TODO GENERATE CERTIFICATE HERE 
 
         #send the certificate
 
         cert_path = '/home'         #TODO put path to certificate
         f = open(cert_path, 'rb')
 
-        data = f.read(1024)
+        data = f.read(BUFFER_SIZE)
 
         while (data):         
             conn.sendAll(data)
-            data = f.read(1024)
+            data = f.read(BUFFER_SIZE)
 
         f.close()
-
-        conn.sendTo(cert_OK, webserver_IP)
 
 
     elif request == stats:
@@ -103,10 +109,3 @@ def serve(conn):
     conn.close()
 
     return
-
-
-
-
-
-       
-
