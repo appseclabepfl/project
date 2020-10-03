@@ -16,86 +16,110 @@ stats = 'STATS'
 revoke_OK = 'revocationOK'
 revoke_FAIL = 'revocationFAIL'
 
-
+context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+context.load_verify_locations('/home/webserver/rootCA.pem')       
+    
+CA_IP = '10.10.10.3'
+CA_port = 6000
 
 BUFFER_SIZE = 1024
 
-#function that connect to the CA using TLS and returns the connected socket
-def connectToCA():
-
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    context.load_verify_locations('../keys_and_certs/rootCA.pem')       
-    
-    CA_IP = '10.10.10.3'
-    CA_port = 5000
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
-
-        with context.wrap_socket(sock) as ssock:
-
-            ssock.connect(CA_IP, CA_port)
-            
-            return ssock
 
 
 #function to ask for a new certificate
 def getNewCert(savePath, userInfo):   #TODO what information should we give to the CA to generate certs ? email name surname etc...
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
 
-    conn = connectToCA()
-    conn.sendall(new_cert)
+        with context.wrap_socket(sock, server_hostname=CA_IP) as ssock:
+            ssock.settimeout(0.3)
 
-    #send user info to CA
+            try:
+                ssock.connect((CA_IP, CA_port))
 
-    conn.sendall(userInfo)
+                ssock.sendall(new_cert.encode())
 
-    #retrieve certificate
+                #send user info to CA
 
-    f = open(savePath, 'wb')
+                ssock.sendall(userInfo)
 
-    data = conn.recv(BUFFER_SIZE)               #TODO put timouts if no answer ?
+                #retrieve certificate
 
-    while(data):
-        f.write(data)
-        data = conn.recv(BUFFER_SIZE)
+                f = open(savePath, 'wb')
 
-    f.close()
+                data = ssock.recv(BUFFER_SIZE)               
 
-    conn.close()
+                while(data):
+                    f.write(data)
+                    data = ssock.recv(BUFFER_SIZE)
+
+                f.close()
+
+                ssock.close()
+
+            except:
+                print('error occured while creating new certificate')
+                ssock.close()
+                return -1
 
     return 0
 
 
 def revokeCert(userInfo):
 
-    conn = connectToCA()
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
 
-    conn.sendall(revoke_cert)
+        with context.wrap_socket(sock, server_hostname=CA_IP) as ssock:
+            ssock.settimeout(0.3)
 
-    conn.sendall(userInfo)                      #TODO put timouts if no answer ?
+            try:
+                ssock.connect((CA_IP, CA_port))
 
-    status = conn.recv(BUFFER_SIZE)
+                ssock.sendall(revoke_cert.encode())
 
-    if status != revoke_OK:
-        conn.close()
-        return -1
+                ssock.sendall(userInfo)                     
 
-    conn.close()
+                status = ssock.recv(BUFFER_SIZE)
+
+                if status != revoke_OK:
+                    ssock.close()
+                    return -1
+
+                ssock.close()
+
+            except:
+                print('error occured while revoking the certificate')
+                ssock.close()
+                return -1
+
     return 0
 
 
 def getCAStats():
 
-    conn = connectToCA()                        #TODO put timouts if no answer ?
-    conn.sendall(stats)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
 
-    CA_stats = ''
+        with context.wrap_socket(sock, server_hostname=CA_IP) as ssock:
 
-    data = conn.recv(BUFFER_SIZE)
+            ssock.settimeout(1)
 
-    while(data):
-        CA_stats += data
-        data = conn.recv(BUFFER_SIZE)
+            CA_stats = ''
 
-    conn.close()
-    
-    return data
+            try:
+                ssock.connect((CA_IP, CA_port))
+                                                
+                ssock.sendall(stats.encode())
+
+                data = ssock.recv(BUFFER_SIZE)
+                
+                while(data):
+                    CA_stats += data.decode()
+                    data = ssock.recv(BUFFER_SIZE)
+
+                ssock.close()
+                    
+                return CA_stats
+
+            except:
+                print('error while getting CA stats')
+                ssock.close()
+                return CA_stats
