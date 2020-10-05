@@ -1,3 +1,4 @@
+import os
 import datetime
 
 from cryptography import x509
@@ -10,6 +11,14 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
+
+CERTIFICATES_PATH = "certificates/"
+if not os.path.exists(CERTIFICATES_PATH):
+    os.makedirs(CERTIFICATES_PATH)
+
+KEYS_PATH = "keys/"
+if not os.path.exists(KEYS_PATH):
+    os.makedirs(KEYS_PATH)
 
 
 def generate_rsa_private_key(public_exponent=65537, key_size=2048):
@@ -70,14 +79,14 @@ def write_certificate(certificate, certificate_file_name):
         certificate to write
 
     certificate_file_name: str
-        path to write the certificate
+        file to write the certificate
 
     Returns
     -------
     None
 
     """
-    with open(certificate_file_name, 'w') as file:
+    with open(CERTIFICATES_PATH + certificate_file_name, 'w') as file:
         file.write(certificate.public_bytes(encoding=serialization.Encoding.PEM).decode())
 
 
@@ -88,7 +97,7 @@ def read_certificate(certificate_file_name):
     Parameters
     ----------
     certificate_file_name: str
-        path to read the certificate
+        file to read the certificate
 
     Returns
     -------
@@ -97,7 +106,7 @@ def read_certificate(certificate_file_name):
 
     """
     pem_cert = None
-    with open(certificate_file_name, "rb") as file:
+    with open(CERTIFICATES_PATH + certificate_file_name, "rb") as file:
         pem_cert = file.read()
     return x509.load_pem_x509_certificate(pem_cert, default_backend())
 
@@ -112,7 +121,7 @@ def save_key(key, filename):
         the key to write
 
     filename: str
-        path to write the key
+        file to write the key
 
     Returns
     -------
@@ -124,7 +133,7 @@ def save_key(key, filename):
         format=serialization.PrivateFormat.TraditionalOpenSSL,
         encryption_algorithm=serialization.NoEncryption()
     )
-    with open(filename, 'wb') as pem_out:
+    with open(KEYS_PATH + filename, 'wb') as pem_out:
         pem_out.write(pem)
 
 
@@ -135,7 +144,7 @@ def load_key(filename):
     Parameters
     ----------
     filename: str
-        path to read the key
+        file to read the key
 
     Returns
     -------
@@ -143,23 +152,23 @@ def load_key(filename):
         the read key
 
     """
-    with open(filename, 'rb') as pem_in:
+    with open(KEYS_PATH + filename, 'rb') as pem_in:
         pemlines = pem_in.read()
     private_key = load_pem_private_key(pemlines, None, default_backend())
     return private_key
 
 
-def create_root_certificate(root_certificate_path=None, root_private_key_path=None):
+def create_root_certificate(root_certificate_file=None, root_private_key_file=None):
     """
     Create self signed root certificate
 
     Parameters
     ----------
-    root_certificate_path: str
-        path to store the root certificate
+    root_certificate_file: str
+        file to store the root certificate
 
-    root_private_key_path: str
-        path to store the private key
+    root_private_key_file: str
+        file to store the private key
 
     Returns
     -------
@@ -195,17 +204,17 @@ def create_root_certificate(root_certificate_path=None, root_private_key_path=No
         datetime.datetime.utcnow() + datetime.timedelta(days=365)
     ).sign(root_key, hashes.SHA256(), default_backend())
 
-    if root_certificate_path:
-        write_certificate(root_certificate, root_certificate_path)
+    if root_certificate_file:
+        write_certificate(root_certificate, root_certificate_file)
 
-    if root_private_key_path:
-        save_key(root_key, root_private_key_path)
+    if root_private_key_file:
+        save_key(root_key, root_private_key_file)
 
     return root_certificate, root_key
 
 
-def certificate_issuing(user_id, user_pwd_hash, root_certificate_path='root_certificate.pem',
-                        root_private_key_path="root_private_key.pem", validity=30):
+def certificate_issuing(user_id, user_pwd_hash, root_certificate_file='root_certificate.pem',
+                        root_private_key_file="root_private_key.pem", validity=30):
     """
     Create new certificate signed form the CA
 
@@ -218,11 +227,11 @@ def certificate_issuing(user_id, user_pwd_hash, root_certificate_path='root_cert
     user_pwd_hash: str
         password hash of the user
 
-    root_certificate_path: str
-        path to store the root certificate
+    root_certificate_file: str
+        file to store the root certificate
 
-    root_private_key_path: str
-        path to store the private key
+    root_private_key_file: str
+        file to store the private key
 
     validity: int
         validity of the certificate in days
@@ -241,13 +250,13 @@ def certificate_issuing(user_id, user_pwd_hash, root_certificate_path='root_cert
 
     # Connect to the database and check user_id, user_pwd_hash
 
-    root_certificate = read_certificate(root_certificate_path)
+    root_certificate = read_certificate(root_certificate_file)
 
     user_last_name, user_first_name, user_email = get_user_attributes_dummy(user_id)
 
     certificate_key = generate_rsa_private_key()
 
-    root_key = load_key(root_private_key_path)
+    root_key = load_key(root_private_key_file)
 
     certificate = x509.CertificateBuilder().subject_name(x509.Name([
         x509.NameAttribute(NameOID.COUNTRY_NAME, u"CH"),
@@ -311,12 +320,20 @@ class CRL:
     """
     Updatable certificate revocation list (CRL)
     """
-    def __init__(self):
+    def __init__(self, root_certificate_file='root_certificate.pem', root_private_key_file="root_private_key.pem"):
         """
         self.revoked_certificates: List[RevokedCertificate]
             List of all the revoked certificates
+
+        self.root_certificate_file: str
+            file to store the root certificate
+
+        self.root_private_key_file: str
+            file to store the private key
         """
         self.revoked_certificates = []
+        self.root_certificate_file = root_certificate_file
+        self.root_private_key_file = root_private_key_file
 
     def revoke_certificate(self, certificate):
         """
@@ -337,27 +354,21 @@ class CRL:
         builder = builder.serial_number(certificate.serial_number)
         self.revoked_certificates.append(builder.build(default_backend()))
 
-    def get_crl(self, root_certificate_path='root_certificate.pem', root_private_key_path="root_private_key.pem"):
+    def get_crl(self):
         """
         Creates a new CRL in the pem format
 
         Parameters
         ----------
-        root_certificate_path: str
-            path to store the root certificate
-
-        root_private_key_path: str
-            path to store the private key
-
         Returns
         -------
         CRL in the pem format
 
         """
         # Load our root cert
-        root_key = load_key(root_private_key_path)
+        root_key = load_key(self.root_private_key_file)
 
-        root_certificate = read_certificate(root_certificate_path)
+        root_certificate = read_certificate(self.root_certificate_file)
 
         builder = x509.CertificateRevocationListBuilder()
         builder = builder.last_update(datetime.datetime.today())
@@ -408,25 +419,3 @@ def is_revoked(certificate, crl_pem):
     """
     crl = x509.load_pem_x509_crl(crl_pem, backend=default_backend())
     return crl.get_revoked_certificate_by_serial_number(certificate.serial_number) != None
-
-
-def main():
-
-    root_certificate, root_key = create_root_certificate('root_certificate.pem', "root_private_key.pem")
-
-    certificate, private_key = certificate_issuing("user_id", "user_password")
-
-    verify_certificate(certificate, root_certificate)
-
-    crl = CRL()
-    crl_pem = crl.update_crl(certificate)
-
-    crl = CRL()
-    crl_pem = crl.get_crl()
-
-    is_revoked(certificate, crl_pem)
-
-
-if __name__ == "__main__":
-    # execute only if run as a script
-    main()
