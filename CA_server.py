@@ -100,7 +100,7 @@ port = 6000
 
 BUFFER_SIZE = 1024
 
-context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+context = ssl.SSLContext(ssl.PROTOCOL_TLS, ssl.OP_NO_SSLv3)
 context.load_cert_chain('/home/coreca/CA_certificate.pem', '/home/coreca/CA_TLS_pk.key')       #TODO create valid certs and put them on the VMs
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) 

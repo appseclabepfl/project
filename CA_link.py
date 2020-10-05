@@ -16,7 +16,8 @@ stats = 'STATS'
 revoke_OK = 'revocationOK'
 revoke_FAIL = 'revocationFAIL'
 
-context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+context = ssl.SSLContext(ssl.PROTOCOL_TLS, ssl.OP_NO_SSLv3)
+
 context.load_verify_locations('/home/webserver/rootCA.pem')       
     
 CA_IP = '10.10.10.3'
