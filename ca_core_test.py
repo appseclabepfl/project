@@ -22,6 +22,5 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(False, is_revoked(certificate2, crl_pem))
 
 
-
 if __name__ == '__main__':
     unittest.main()
