@@ -1,6 +1,9 @@
 from CA_link import *
 
-#TEST CONNECTION TO CA
+#TESTS
 
 print(getCAStats())
 
+getNewCert('/home/test.txt', 'user1')
+
+revokeCert('user1')

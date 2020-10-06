@@ -37,11 +37,11 @@ def getNewCert(savePath, userInfo):   #TODO what information should we give to t
             try:
                 ssock.connect((CA_IP, CA_port))
 
-                ssock.sendall(new_cert.encode())
+                ssock.send(new_cert.encode())
 
                 #send user info to CA
 
-                ssock.sendall(userInfo)
+                ssock.send(userInfo.encode())
 
                 #retrieve certificate
 
@@ -75,9 +75,9 @@ def revokeCert(userInfo):
             try:
                 ssock.connect((CA_IP, CA_port))
 
-                ssock.sendall(revoke_cert.encode())
+                ssock.send(revoke_cert.encode())
 
-                ssock.sendall(userInfo)                     
+                ssock.send(userInfo.encode())                     
 
                 status = ssock.recv(BUFFER_SIZE)
 
@@ -108,7 +108,7 @@ def getCAStats():
             try:
                 ssock.connect((CA_IP, CA_port))
                                                 
-                ssock.sendall(stats.encode())
+                ssock.send(stats.encode())
 
                 data = ssock.recv(BUFFER_SIZE)
                 

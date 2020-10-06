@@ -8,6 +8,10 @@ import socket
 import ssl
 from threading import Thread
 
+webserver_IP= '10.10.20.2'
+CA_IP = '10.10.10.3'
+port = 6000
+BUFFER_SIZE = 1024
 
 #function that will communicate with the webserver and call the core CA functions
 def serve(conn):
@@ -33,7 +37,7 @@ def serve(conn):
         
         try:
             #TODO REVOKE CERTIFICATES HERE
-            print(userInfo)
+            print(userInfo.decode())
         
         except:
             conn.send(revoke_FAIL.encode())
@@ -47,17 +51,18 @@ def serve(conn):
 
         userInfo = conn.recv(BUFFER_SIZE)
 
-        #TODO GENERATE CERTIFICATE HERE 
+        #TODO GENERATE CERTIFICATE HERE
+        print(userInfo.decode()) 
 
         #send the certificate
 
-        cert_path = '/home'         #TODO put path to certificate
+        cert_path = '/home/coreca/test.crt'         #TODO put path to certificate
         f = open(cert_path, 'rb')
 
         data = f.read(BUFFER_SIZE)
 
         while (data):         
-            conn.sendAll(data)
+            conn.send(data)
             data = f.read(BUFFER_SIZE)
 
         f.close()
@@ -94,11 +99,7 @@ class ClientThread(Thread):
         
 
 
-webserver_IP= '10.10.20.2'
-CA_IP = '10.10.10.3'
-port = 6000
 
-BUFFER_SIZE = 1024
 
 context = ssl.SSLContext(ssl.PROTOCOL_TLS, ssl.OP_NO_SSLv3)
 context.load_cert_chain('/home/coreca/CA_certificate.pem', '/home/coreca/CA_TLS_pk.key')       #TODO create valid certs and put them on the VMs
