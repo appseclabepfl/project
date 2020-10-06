@@ -34,7 +34,7 @@ def getNewCert(savePath, userInfo):   #TODO what information should we give to t
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
 
         with context.wrap_socket(sock, server_hostname=CA_IP) as ssock:
-            ssock.settimeout(3)
+            ssock.settimeout(0.3)
 
             try:
                 ssock.connect((CA_IP, CA_port))
@@ -59,8 +59,7 @@ def getNewCert(savePath, userInfo):   #TODO what information should we give to t
 
                 ssock.close()
 
-            except Exception as inst:
-                print(inst)
+            except:
                 print('error occured while creating new certificate')
                 ssock.close()
                 return -1
