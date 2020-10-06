@@ -60,12 +60,13 @@ def serve(conn):
         f = open(cert_path, 'rb')
 
         data = f.read(BUFFER_SIZE)
-
-        while (data):         
+        print(data.decode())
+        while(data):         
             conn.send(data)
             data = f.read(BUFFER_SIZE)
 
         f.close()
+        
 
 
     elif request.decode() == stats:

@@ -47,9 +47,9 @@ def getNewCert(savePath, userInfo):   #TODO what information should we give to t
                 #retrieve certificate
 
                 f = open(savePath, 'wb')
-
+               
                 data = ssock.recv(BUFFER_SIZE)               
-
+                
                 while(data):
                     f.write(data)
                     data = ssock.recv(BUFFER_SIZE)

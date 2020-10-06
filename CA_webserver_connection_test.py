@@ -4,6 +4,6 @@ from CA_link import *
 
 print(getCAStats())
 
-getNewCert('/home/test.txt', 'user1')
+getNewCert('/home/webserver/test.txt', 'user1')
 
 revokeCert('user1')
