@@ -16,9 +16,10 @@ stats = 'STATS'
 revoke_OK = 'revocationOK'
 revoke_FAIL = 'revocationFAIL'
 
-context = ssl.SSLContext(ssl.PROTOCOL_TLS, ssl.OP_NO_SSLv3)
-
+context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
 context.load_verify_locations('/home/webserver/rootCA.pem')      #path to certificate for TLS 
+context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
+context.set_ciphers('ECDHE-RSA-AES256-SHA384')
     
 CA_IP = '10.10.10.3'
 CA_port = 6000
@@ -33,7 +34,7 @@ def getNewCert(savePath, userInfo):   #TODO what information should we give to t
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
 
         with context.wrap_socket(sock, server_hostname=CA_IP) as ssock:
-            ssock.settimeout(0.3)
+            ssock.settimeout(3)
 
             try:
                 ssock.connect((CA_IP, CA_port))
@@ -58,7 +59,8 @@ def getNewCert(savePath, userInfo):   #TODO what information should we give to t
 
                 ssock.close()
 
-            except:
+            except Exception as inst:
+                print(inst)
                 print('error occured while creating new certificate')
                 ssock.close()
                 return -1

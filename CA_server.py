@@ -102,8 +102,10 @@ class ClientThread(Thread):
 
 
 
-context = ssl.SSLContext(ssl.PROTOCOL_TLS, ssl.OP_NO_SSLv3)
+context = context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
+context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
 context.load_cert_chain('/home/coreca/CA_certificate.pem', '/home/coreca/CA_TLS_pk.key')       #Path to certificates for TLS communication
+context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) 
 
@@ -111,7 +113,7 @@ sock.bind((CA_IP, port))
 sock.listen(5)              #TODO how many concurrent connnections are we expecting ? DDOS protections at the server or firewall level ?
 
 ssock = context.wrap_socket(sock, server_side=True)
-        
+
 while True:
 
     # accept connections
