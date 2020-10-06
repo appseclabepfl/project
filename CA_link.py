@@ -18,7 +18,7 @@ revoke_FAIL = 'revocationFAIL'
 
 context = ssl.SSLContext(ssl.PROTOCOL_TLS, ssl.OP_NO_SSLv3)
 
-context.load_verify_locations('/home/webserver/rootCA.pem')       
+context.load_verify_locations('/home/webserver/rootCA.pem')      #path to certificate for TLS 
     
 CA_IP = '10.10.10.3'
 CA_port = 6000
@@ -28,6 +28,7 @@ BUFFER_SIZE = 1024
 
 
 #function to ask for a new certificate
+#return -1 in case of error, 0 otherwise
 def getNewCert(savePath, userInfo):   #TODO what information should we give to the CA to generate certs ? email name surname etc...
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
 
@@ -65,6 +66,8 @@ def getNewCert(savePath, userInfo):   #TODO what information should we give to t
     return 0
 
 
+#function to revoke a certificate of a specific user
+#return -1 in case off error, 0 otherwise
 def revokeCert(userInfo):
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
@@ -94,7 +97,8 @@ def revokeCert(userInfo):
 
     return 0
 
-
+#Function that admin can use to receive the CA's stats
+#return a string containing the stats or an empty string
 def getCAStats():
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:

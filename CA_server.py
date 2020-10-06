@@ -102,12 +102,12 @@ class ClientThread(Thread):
 
 
 context = ssl.SSLContext(ssl.PROTOCOL_TLS, ssl.OP_NO_SSLv3)
-context.load_cert_chain('/home/coreca/CA_certificate.pem', '/home/coreca/CA_TLS_pk.key')       #TODO create valid certs and put them on the VMs
+context.load_cert_chain('/home/coreca/CA_certificate.pem', '/home/coreca/CA_TLS_pk.key')       #Path to certificates for TLS communication
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) 
 
 sock.bind((CA_IP, port))
-sock.listen(5)              #TODO how many concurrent connnections are we expecting ?
+sock.listen(5)              #TODO how many concurrent connnections are we expecting ? DDOS protections at the server or firewall level ?
 
 ssock = context.wrap_socket(sock, server_side=True)
         
@@ -120,7 +120,7 @@ while True:
 
     print('Connection received from '+str(address))
 
-    if address[0] != webserver_IP:      #reject ip that are not the webserver  TODO verify that it works as intended
+    if address[0] != webserver_IP:      #reject ip that are not the webserver
         conn.close()
 
     else:   #dispatch threads
