@@ -26,6 +26,18 @@ CA_port = 6000
 
 BUFFER_SIZE = 1024
 
+#Send shared key to CA server to authenticate the request
+#Prevent spoofing attacks
+def sendKey(conn):
+
+    f = open('/home/webserver/shared_key.txt', 'rb')
+
+    key = f.read(BUFFER_SIZE)
+
+    conn.send(key)
+
+    return
+
 
 
 #function to ask for a new certificate
@@ -39,14 +51,16 @@ def getNewCert(savePath, userInfo):   #TODO what information should we give to t
             try:
                 ssock.connect((CA_IP, CA_port))
 
+                #send authentification key
+                sendKey(ssock)
+
+                #send instruction
                 ssock.send(new_cert.encode())
 
                 #send user info to CA
-
                 ssock.send(userInfo.encode())
 
                 #retrieve certificate
-
                 f = open(savePath, 'wb')
                
                 data = ssock.recv(BUFFER_SIZE)               
@@ -79,6 +93,10 @@ def revokeCert(userInfo):
             try:
                 ssock.connect((CA_IP, CA_port))
 
+                #send authentification key
+                sendKey(ssock)
+
+                #send instruction
                 ssock.send(revoke_cert.encode())
 
                 ssock.send(userInfo.encode())                     
@@ -112,7 +130,11 @@ def getCAStats():
 
             try:
                 ssock.connect((CA_IP, CA_port))
-                                                
+
+                #send authentification key
+                sendKey(ssock)
+
+                #send instruction                             
                 ssock.send(stats.encode())
 
                 data = ssock.recv(BUFFER_SIZE)

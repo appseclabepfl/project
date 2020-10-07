@@ -13,6 +13,29 @@ CA_IP = '10.10.10.3'
 port = 6000
 BUFFER_SIZE = 1024
 
+
+#Check that the client knows the shared key. 
+#Prevent spoofing attacks from the client's side in case the firewall doesn't work
+def checkKey(conn):
+
+    key = conn.recv(BUFFER_SIZE)
+
+    f = open('/home/coreca/shared_key.txt','rb')
+
+    real_key = f.read(BUFFER_SIZE)
+
+    if key == real_key:
+        f.close()
+        print("webserver correctly authenticated")
+        return True
+
+    f.close()
+    return False
+    
+
+
+
+
 #function that will communicate with the webserver and call the core CA functions
 def serve(conn):
 
@@ -25,6 +48,13 @@ def serve(conn):
     revoke_OK = 'revocationOK'
     revoke_FAIL = 'revocationFAIL'
 
+    #check key (prevent spoofing attacks)
+    if not checkKey(conn):
+        print("Unauthorized access: bad key")
+        conn.close()
+        return
+
+    #listen for requests
     request = conn.recv(BUFFER_SIZE)
 
     print('processing request')
@@ -113,6 +143,7 @@ sock.bind((CA_IP, port))
 sock.listen(5)              #TODO how many concurrent connnections are we expecting ? DDOS protections at the server or firewall level ?
 
 ssock = context.wrap_socket(sock, server_side=True)
+
 
 while True:
 
