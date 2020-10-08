@@ -2,3 +2,6 @@
 .idea
 .vscode
 .ipynb_checkpoints
+certificates
+keys
+__pycache__

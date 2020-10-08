@@ -1,4 +1,5 @@
 import os
+import glob
 import datetime
 
 from cryptography import x509
@@ -16,9 +17,19 @@ CERTIFICATES_PATH = "certificates/"
 if not os.path.exists(CERTIFICATES_PATH):
     os.makedirs(CERTIFICATES_PATH)
 
+ISSUED_PATH = "certificates/issued/"
+if not os.path.exists(ISSUED_PATH):
+    os.makedirs(ISSUED_PATH)
+
+REVOKED_PATH = "certificates/revoked/"
+if not os.path.exists(REVOKED_PATH):
+    os.makedirs(REVOKED_PATH)
+
 KEYS_PATH = "keys/"
 if not os.path.exists(KEYS_PATH):
     os.makedirs(KEYS_PATH)
+
+ROOT_CERTIFICATE_PATH = CERTIFICATES_PATH + 'root_certificate.pem'
 
 
 def generate_rsa_private_key(public_exponent=65537, key_size=2048):
@@ -65,8 +76,117 @@ def get_user_attributes_dummy(user_id):
     # MySQL prepared statement
     # sql_command = ('SELECT lastname, firstname, email FROM users WHERE uid = %s')
     # cursor.execute(sql_command, (uid,))
-    user_id
     return "Tairieur", "Alain", "alaintairieur@gmail.com"
+
+
+def pem_to_crl(crl_pem):
+    """
+    Transform a crl in the PEM format into a crl
+
+    Parameters
+    ----------
+    crl_pem: pem
+        pem crl to transform
+
+    Returns
+    -------
+    CRL
+
+    """
+    return x509.load_pem_x509_crl(crl_pem, backend=default_backend())
+
+
+def pem_to_certificate(certificate_pem):
+    """
+    Transform a certificate in the PEM format into a Certificate
+
+    Parameters
+    ----------
+    certificate_pem: pem
+        certificate to transform
+
+    Returns
+    -------
+    Certificate
+
+    """
+    return x509.load_pem_x509_certificate(certificate_pem, default_backend())
+
+
+def to_pem(c):
+    """
+    Transform a certificate or a CRL in the pem format
+
+    Parameters
+    ----------
+    c: Certificate or CRL
+        The correponding object to transform
+
+    Returns
+    -------
+    pem
+        certificate or a CRL in the pem format
+
+    """
+    return c.public_bytes(encoding=serialization.Encoding.PEM)
+
+
+def get_certificate_attribute_value(certificate, oid):
+    """
+    Extracts the value of a certificate attribute
+
+    Parameters
+    ----------
+    certificate: Certificate
+        The correponding certificate
+
+    oid: NameOID
+        the corresponding attribute name
+
+    Returns
+    -------
+    str
+        The value of the certificate attribute
+
+    """
+    return certificate.subject.get_attributes_for_oid(oid)[0].value
+
+
+def get_certificate_user_id(certificate):
+    """
+    Extracts certificate user id
+
+    Parameters
+    ----------
+    certificate: Certificate
+        The correponding certificate
+
+    Returns
+    -------
+    str
+        The value of the certificate user id
+
+    """
+    return get_certificate_attribute_value(certificate, NameOID.USER_ID)
+
+
+def get_certificate_name(certificate):
+    """
+    Certificate name for the file system
+
+    Parameters
+    ----------
+
+    certificate: Certificate
+        the corresponding certificate
+
+    Returns
+    -------
+    str
+        the name of the certificate
+
+    """
+    return f"{get_certificate_user_id(certificate)}_{certificate.serial_number}.pem"
 
 
 def write_certificate(certificate, certificate_file_name):
@@ -86,8 +206,48 @@ def write_certificate(certificate, certificate_file_name):
     None
 
     """
-    with open(CERTIFICATES_PATH + certificate_file_name, 'w') as file:
-        file.write(certificate.public_bytes(encoding=serialization.Encoding.PEM).decode())
+    with open(certificate_file_name, 'w') as file:
+        file.write(
+            to_pem(certificate).decode())
+
+
+def write_crl(crl, crl_file_name="crl.pem"):
+    """
+    Write a CRL in the pem format
+
+    Parameters
+    ----------
+    crl: CRL
+        certificate revocation list
+
+    crl_file_name: str
+        file to store the crl
+
+    Returns
+    -------
+    None
+
+    """
+    write_certificate(crl, crl_file_name)
+
+
+def read_file(file_name):
+    """
+    Read file
+
+    Parameters
+    ----------
+    file_name: str
+        name of the file
+
+    Returns
+    -------
+    str
+        the content of the file
+
+    """
+    with open(file_name, "rb") as file:
+        return file.read()
 
 
 def read_certificate(certificate_file_name):
@@ -105,10 +265,30 @@ def read_certificate(certificate_file_name):
         the read certificate
 
     """
-    pem_cert = None
-    with open(CERTIFICATES_PATH + certificate_file_name, "rb") as file:
-        pem_cert = file.read()
-    return x509.load_pem_x509_certificate(pem_cert, default_backend())
+    pem_cert = read_file(certificate_file_name)
+
+    return pem_to_certificate(pem_cert)
+
+
+def read_crl(crl_file_name="crl.pem"):
+    """
+    Read a CRL
+
+    Parameters
+    ----------
+
+    crl_file_name: str
+        file to read the CRL
+
+    Returns
+    -------
+    CRL
+        the read CRL
+
+    """
+    crl_pem = read_file(crl_file_name)
+
+    return pem_to_crl(crl_pem)
 
 
 def save_key(key, filename):
@@ -205,7 +385,7 @@ def create_root_certificate(root_certificate_file=None, root_private_key_file=No
     ).sign(root_key, hashes.SHA256(), default_backend())
 
     if root_certificate_file:
-        write_certificate(root_certificate, root_certificate_file)
+        write_certificate(root_certificate, CERTIFICATES_PATH + root_certificate_file)
 
     if root_private_key_file:
         save_key(root_key, root_private_key_file)
@@ -213,7 +393,7 @@ def create_root_certificate(root_certificate_file=None, root_private_key_file=No
     return root_certificate, root_key
 
 
-def certificate_issuing(user_id, user_pwd_hash, root_certificate_file='root_certificate.pem',
+def certificate_issuing(user_id, root_certificate_file=ROOT_CERTIFICATE_PATH,
                         root_private_key_file="root_private_key.pem", validity=30):
     """
     Create new certificate signed form the CA
@@ -223,9 +403,6 @@ def certificate_issuing(user_id, user_pwd_hash, root_certificate_file='root_cert
 
     user_id: str
         identifier of the user
-
-    user_pwd_hash: str
-        password hash of the user
 
     root_certificate_file: str
         file to store the root certificate
@@ -279,6 +456,8 @@ def certificate_issuing(user_id, user_pwd_hash, root_certificate_file='root_cert
         datetime.datetime.utcnow() + datetime.timedelta(days=validity)
     ).sign(root_key, hashes.SHA256(), default_backend())
 
+    write_certificate(certificate, ISSUED_PATH + get_certificate_name(certificate))
+
     return certificate, certificate_key
 
 
@@ -316,11 +495,52 @@ def verify_certificate(certificate, root_certificate):
         return False
 
 
+def revoke_certificate(certificate):
+    """
+    Revoke a certificate
+
+    Parameters
+    ----------
+    certificate: Certificate
+        certificate to revoke
+
+    Returns
+    -------
+    RevokedCertificate
+
+    """
+    builder = x509.RevokedCertificateBuilder()
+    builder = builder.revocation_date(datetime.datetime.today())
+    builder = builder.serial_number(certificate.serial_number)
+    return builder.build(default_backend())
+
+
+def create_revocation_list(folder):
+    """
+    Create a revocation list based on the pem files of a folder
+
+    Parameters
+    ----------
+
+    folder: str
+        Path of the folder containing the pem files
+
+    Returns
+    -------
+    Revoked_Certificates[]
+        List of revoked certificates
+
+    """
+    certificates = glob.glob(f'{folder}*.pem')
+    return [revoke_certificate(read_certificate(certificate)) for certificate in certificates]
+
+
 class CRL:
     """
     Updatable certificate revocation list (CRL)
     """
-    def __init__(self, root_certificate_file='root_certificate.pem', root_private_key_file="root_private_key.pem"):
+
+    def __init__(self, root_certificate_file=ROOT_CERTIFICATE_PATH, root_private_key_file="root_private_key.pem"):
         """
         self.revoked_certificates: List[RevokedCertificate]
             List of all the revoked certificates
@@ -331,28 +551,9 @@ class CRL:
         self.root_private_key_file: str
             file to store the private key
         """
-        self.revoked_certificates = []
+        self.revoked_certificates = create_revocation_list(REVOKED_PATH)
         self.root_certificate_file = root_certificate_file
         self.root_private_key_file = root_private_key_file
-
-    def revoke_certificate(self, certificate):
-        """
-        Revoke a certificate
-
-        Parameters
-        ----------
-        certificate: Certificate
-            certificate to revoke
-
-        Returns
-        -------
-        RevokedCertificate
-
-        """
-        builder = x509.RevokedCertificateBuilder()
-        builder = builder.revocation_date(datetime.datetime.today())
-        builder = builder.serial_number(certificate.serial_number)
-        self.revoked_certificates.append(builder.build(default_backend()))
 
     def get_crl(self):
         """
@@ -380,7 +581,8 @@ class CRL:
         cert_revocation_list = builder.sign(
             private_key=root_key, algorithm=hashes.SHA256(), backend=default_backend()
         )
-        return cert_revocation_list.public_bytes(encoding=serialization.Encoding.PEM)
+
+        return cert_revocation_list, cert_revocation_list.public_bytes(encoding=serialization.Encoding.PEM)
 
     def update_crl(self, certificate):
         """
@@ -396,11 +598,14 @@ class CRL:
         updated CRL in the pem format
 
         """
-        self.revoke_certificate(certificate)
-        return self.get_crl()
+        write_certificate(certificate, REVOKED_PATH + get_certificate_name(certificate))
+        self.revoked_certificates.append(revoke_certificate(certificate))
+        crl, crl_pem = self.get_crl()
+        write_crl(crl, CERTIFICATES_PATH + "crl.pem")
+        return crl, crl_pem
 
 
-def is_revoked(certificate, crl_pem):
+def is_revoked(certificate, crl_pem=None, crl_path=""):
     """
     Check if a certificate is revoked in a particular CRL
 
@@ -412,10 +617,16 @@ def is_revoked(certificate, crl_pem):
     crl_pem: Byte[]
         the correponding CRL in the pem format
 
+    crl_path: str
+        Path of the CRL if crl_pem is None
+
     Returns
     -------
     bool
 
     """
-    crl = x509.load_pem_x509_crl(crl_pem, backend=default_backend())
+    if crl_pem:
+        crl = pem_to_crl(crl_pem)  # x509.load_pem_x509_crl(crl_pem, backend=default_backend())
+    else:
+        crl = read_crl(crl_path)
     return crl.get_revoked_certificate_by_serial_number(certificate.serial_number) != None
