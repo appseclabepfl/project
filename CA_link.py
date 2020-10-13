@@ -103,7 +103,7 @@ def revokeCert(userInfo):
 
                 status = ssock.recv(BUFFER_SIZE)
 
-                if status != revoke_OK:
+                if status != revoke_OK:         #TODO retrieve CRL from core CA and publish it
                     ssock.close()
                     return -1
 
@@ -117,7 +117,8 @@ def revokeCert(userInfo):
     return 0
 
 #Function that admin can use to receive the CA's stats
-#return a string containing the stats or an empty string
+#returns a string containing the stats or an empty string
+#DANGER: should only be called after a CA ADMIN login using its CERTIFICATE
 def getCAStats():
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:

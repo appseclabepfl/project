@@ -7,6 +7,7 @@
 import socket
 import ssl
 from threading import Thread
+from threading import Lock
 from os import listdir
 from os.path import isfile, join
 from ca_core import *
@@ -28,6 +29,10 @@ ISSUED_HASH_PATH = CERTIFICATES_PATH + "hash/"
 KEYS_PATH = "keys/"
 ROOT_CERTIFICATE_PATH = CERTIFICATES_PATH + 'root_certificate.pem'
 ROOT_PRIVATE_KEY_PATH = KEYS_PATH + "root_private_key.pem"
+CA_DATA_PATH = "data/"
+ISSUED_COUNTER = CA_DATA_PATH + "issued"
+REVOKED_COUNTER = CA_DATA_PATH + "revoked"
+SERIAL_NUMBER = CA_DATA_PATH + "serialnb"
 
 #Protocol Constants
 
@@ -43,6 +48,9 @@ revoke_FAIL = 'revocationFAIL'
 REVOKED_ERROR = 'REVOKED_CERT'
 UNKNOWN_ERROR = 'UNKNOWN_CERT'
 ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
+
+#Counters and synchronization
+lock = Lock()
 
 
 #Check that the client knows the shared key. 
@@ -116,6 +124,63 @@ def login_with_certificate(conn):
     conn.send(UNKNOWN_ERROR.encode())
     return
 
+#Increase revoke counter using locks.
+#counters are stored in the filesystem
+def increase_revoke_counter():
+
+    lock.acquire()
+    try:
+        f = open(REVOKED_COUNTER, 'r')
+        counter = int(f.readline())
+        f.close()
+
+        f = open(REVOKED_COUNTER, 'w')
+        f.writelines(str(counter+1))
+        f.close()
+
+    finally:
+        lock.release()
+
+#Increase issued counter using locks.
+#counters are stored in the filesystem
+def increase_issued_counter():
+
+    lock.acquire()
+    try:
+        f = open(ISSUED_COUNTER, 'r')
+        counter = int(f.readline())
+        f.close()
+
+        f = open(ISSUED_COUNTER, 'w')
+        f.writelines(str(counter+1))
+        f.close()
+
+    finally:
+        lock.release()
+
+def get_issued_counter():
+
+    f = open(ISSUED_COUNTER, 'r')
+    counter = int(f.readline())
+    f.close()
+
+    return counter
+
+def get_revoked_counter():
+
+    f = open(REVOKED_COUNTER, 'r')
+    counter = int(f.readline())
+    f.close()
+
+    return counter
+
+def get_serial_number():
+
+    f = open(SERIAL_NUMBER, 'r')
+    number = int(f.readline())
+    f.close()
+
+    return number
 
 #function that will communicate with the webserver and call the core CA functions
 def serve(conn):
@@ -146,9 +211,12 @@ def serve(conn):
 
             #remove hash of issued certificate
             os.remove(ISSUED_HASH_PATH+uid+'.hash')
-            
+
+            #increase revoke counter using lock
+            increase_revoke_counter()
 
             #TODO send CRL to webserver since it must be published !
+
         except:
             conn.send(revoke_FAIL.encode())
 
@@ -182,12 +250,14 @@ def serve(conn):
         #clean secret key
         os.remove(KEYS_PATH+uid+".pem")
 
+        #increase the counter of issued certificates
+        increase_issued_counter()
+
     elif request.decode() == stats:
 
         #display stats about the CA
 
-        #TODO send back the stats
-        stats = 'CA stats....'
+        stats = "ISSUED CERTS: "+get_issued_counter+", REVOKED CERTS: "+get_revoked_counter+", SERIAL NUMBER: "+get_serial_number
 
         conn.send(stats.encode())
 
@@ -220,8 +290,8 @@ class ClientThread(Thread):
 
 
 
-# Retrieve root certificate and root key if they exist
-# Create them otherwise
+# Create root certificate and key if they don't exist
+# and returns them
 def getRootCertificatesAndKey():
     
     if os.path.exists(ROOT_CERTIFICATE_PATH) and os.path.exists(ROOT_PRIVATE_KEY_PATH):
@@ -234,8 +304,34 @@ def getRootCertificatesAndKey():
         return create_root_certificate('root_certificate.pem', "root_private_key.pem")
 
 
+#check if all files countaining counters are present.
+#if not they will be created
+def check_counters_setup():
+
+    lock.acquire()
+    try:
+
+        if not os.path.exists(ISSUED_COUNTER):
+            f = open(ISSUED_COUNTER,'w')
+            f.writelines("0")
+            f.close()
+
+        if not os.path.exists(REVOKED_COUNTER):
+            f = open(REVOKED_COUNTER,'w')
+            f.writelines("0")
+            f.close()
+
+        if not os.path.exists(SERIAL_NUMBER):
+            f = open(SERIAL_NUMBER,'w')
+            f.writelines("42069")
+            f.close()
+    finally:
+        lock.release()
+
+    return
 
 
+####################Core CA Script######################
 
 
 context = context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
@@ -250,6 +346,10 @@ sock.listen(5)              #TODO how many concurrent connnections are we expect
 
 ssock = context.wrap_socket(sock, server_side=True)
 
+
+#Setup files if it is the first startup
+getRootCertificatesAndKey()
+check_counters_setup()
 
 while True:
 
