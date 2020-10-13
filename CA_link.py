@@ -3,7 +3,7 @@
 
 import socket
 import ssl
-
+from tools import *
 
 #operations supported by the CA
 

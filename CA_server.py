@@ -7,11 +7,40 @@
 import socket
 import ssl
 from threading import Thread
+from os import listdir
+from os.path import isfile, join
+from ca_core import *
+from tools import *
 
+
+#TLS Constants
 webserver_IP= '10.10.20.2'
 CA_IP = '10.10.10.3'
 port = 6000
 BUFFER_SIZE = 1024
+
+#CA Constants
+
+CERTIFICATES_PATH = "certificates/"
+ISSUED_PATH = "certificates/issued/"
+REVOKED_PATH = "certificates/revoked/"
+KEYS_PATH = "keys/"
+ROOT_CERTIFICATE_PATH = CERTIFICATES_PATH + 'root_certificate.pem'
+ROOT_PRIVATE_KEY_PATH = KEYS_PATH + "root_private_key.pem"
+
+#Protocol Constants
+
+#operations supported by the server
+revoke_cert = 'REVOKE'
+new_cert = 'NEW'
+stats = 'STATS'
+login = 'LOGIN'
+
+#messages sent by server
+revoke_OK = 'revocationOK'
+revoke_FAIL = 'revocationFAIL'
+REVOKED_ERROR = 'REVOKED_CERT'
+UNKNOWN_ERROR = 'UNKNOWN_CERT'
 
 
 #Check that the client knows the shared key. 
@@ -32,21 +61,48 @@ def checkKey(conn):
     f.close()
     return False
     
+# returns the names of all certificates in folder
+def get_all_certificates(path):
+
+    return [f for f in listdir(path) if (isfile(join(path, f)) and f.endswith('.pem'))]
 
 
+# Receive a certificate from the webserver
+# compare it and returns the uid associated with the certificate
+# or the "UNKNOWN_CERT" of "REVOKED_CERT" error message
+def login_with_certificate(conn):
+
+    crl = CRL() #TODO check that it remembers already revoked certs
+
+    hash_digest = conn.recv(BUFFER_SIZE)
+
+    certs = get_all_certificates(ISSUED_PATH)
+    # TODO: check format of certificates names
+    for c in certs :
+        h = hash_file(c)
+
+        if hash_digest == h:
+
+            cert = read_certificate(c)
+
+            if is_revoked(cert, crl=crl):  #certificate matching but revoked
+
+                conn.send(REVOKED_ERROR.encode())
+
+            else:   #found a matching certificate. send the correpsonding uid
+
+                uid = get_certificate_user_id(cert)
+                conn.send(uid.encode())
+                return 
+
+    #No matching certificate found
+    conn.send(UNKNOWN_ERROR.encode())
+    return
 
 
 #function that will communicate with the webserver and call the core CA functions
 def serve(conn):
 
-    #operations supported by the server
-    revoke_cert = 'REVOKE'
-    new_cert = 'NEW'
-    stats = 'STATS'
-
-    #messages sent by server
-    revoke_OK = 'revocationOK'
-    revoke_FAIL = 'revocationFAIL'
 
     #check key (prevent spoofing attacks)
     if not checkKey(conn):
@@ -63,11 +119,14 @@ def serve(conn):
 
     if request.decode() == revoke_cert:      #lauch revocation process
 
-        userInfo = conn.recv(BUFFER_SIZE)
+        uid = conn.recv(BUFFER_SIZE)
         
         try:
-            #TODO REVOKE CERTIFICATES HERE
-            print(userInfo.decode())
+            # TODO get certificate using uid
+            cert = get_certificate_by_user_id(uid.decode())
+            
+            crl = CRL()
+            crl.update_crl(cert)
         
         except:
             conn.send(revoke_FAIL.encode())
@@ -79,14 +138,14 @@ def serve(conn):
 
         #listen for user informations (should be less than 1024 byte)
 
-        userInfo = conn.recv(BUFFER_SIZE)
+        uid = conn.recv(BUFFER_SIZE)
 
-        #TODO GENERATE CERTIFICATE HERE
-        print(userInfo.decode()) 
+        cert, private_key = certificate_issuing(uid.decode())
 
-        #send the certificate
+        #send the certificate and the key #TODO format OK with requirements ????
 
-        cert_path = '/home/coreca/test.crt'         #TODO put path to certificate
+        cert_path = get_certificate_name(cert)
+        key_path = #TODO 2 in one format or separate ?????
         f = open(cert_path, 'rb')
 
         data = f.read(BUFFER_SIZE)
@@ -107,6 +166,11 @@ def serve(conn):
         stats = 'CA stats....'
 
         conn.send(stats.encode())
+
+    elif request.decode() == login:
+
+        #check if there is a matching certificate and send back uid to webserver
+        login_with_certificate(conn)
 
     else:
 
@@ -132,9 +196,27 @@ class ClientThread(Thread):
 
 
 
+# Retrieve root certificate and root key if they exist
+# Create them otherwise
+def getRootCertificatesAndKey():
+    
+    if os.path.exists(ROOT_CERTIFICATE_PATH) and os.path.exists(ROOT_PRIVATE_KEY_PATH):
+
+        cert = read_certificate(ROOT_CERTIFICATE_PATH)
+        key = load_key("root_private_key.pem")
+        return cert, key
+
+    else:
+        return create_root_certificate('root_certificate.pem', "root_private_key.pem")
+
+
+
+
+
+
 context = context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
 context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
-context.load_cert_chain('/home/coreca/CA_certificate.pem', '/home/coreca/CA_TLS_pk.key')       #Path to certificates for TLS communication
+context.load_cert_chain('/home/coreca/CA_certificate.pem', '/home/coreca/CA_TLS_pk.key')       #Path to certificates for TLS comunication
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) 

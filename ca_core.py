@@ -169,6 +169,22 @@ def get_certificate_user_id(certificate):
     """
     return get_certificate_attribute_value(certificate, NameOID.USER_ID)
 
+def get_certificate_by_user_id(uid):
+    """
+    Return the certificate of the user corresponding with the uid
+
+    Parameters
+    ----------
+    uid: str
+        The uid
+
+    Returns
+    -------
+    Certificate
+        The certificate corresponding to the uid
+
+    """
+    return #TODO 
 
 def get_certificate_name(certificate):
     """
@@ -605,7 +621,7 @@ class CRL:
         return crl, crl_pem
 
 
-def is_revoked(certificate, crl_pem=None, crl_path=""):
+def is_revoked(certificate, crl_pem=None, crl_path="", crl=None):
     """
     Check if a certificate is revoked in a particular CRL
 
@@ -620,13 +636,19 @@ def is_revoked(certificate, crl_pem=None, crl_path=""):
     crl_path: str
         Path of the CRL if crl_pem is None
 
+    crl: CRL
+        A CRL object
+
     Returns
     -------
     bool
 
     """
-    if crl_pem:
-        crl = pem_to_crl(crl_pem)  # x509.load_pem_x509_crl(crl_pem, backend=default_backend())
-    else:
-        crl = read_crl(crl_path)
+    if not crl:
+
+        if crl_pem:
+            crl = pem_to_crl(crl_pem)  # x509.load_pem_x509_crl(crl_pem, backend=default_backend())
+        else:
+            crl = read_crl(crl_path)
+    
     return crl.get_revoked_certificate_by_serial_number(certificate.serial_number) != None
