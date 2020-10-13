@@ -2,6 +2,9 @@ import os
 import glob
 import datetime
 
+from os import listdir
+from os.path import isfile, join
+
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
@@ -12,6 +15,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from OpenSSL.crypto import *
 
 CERTIFICATES_PATH = "certificates/"
 if not os.path.exists(CERTIFICATES_PATH):
@@ -181,10 +185,37 @@ def get_certificate_by_user_id(uid):
     Returns
     -------
     Certificate
-        The certificate corresponding to the uid
+        The certificate corresponding to the uid or None if there is no match or the certificate is already revoked
 
     """
-    return #TODO 
+    crl = CRL()
+
+    #take all valid certificates that have the uid in their name
+    certs = [f for f in listdir(ISSUED_PATH) if (isfile(join(ISSUED_PATH, f)) and f.endswith('.pem') and (uid in f))]
+    valid_cert = [c for c in certs if (not is_revoked(c,crl=crl))]
+
+    if len(valid_cert) > 0:
+        return valid_cert[0]
+
+    return None
+
+def get_key_name(key):
+    """
+    Key name in filesystem
+
+    Parameters
+    ----------
+
+    key: Key
+        the corresponding key
+
+    Returns
+    -------
+    str
+        the name of the key
+
+    """
+    return 
 
 def get_certificate_name(certificate):
     """
@@ -473,6 +504,7 @@ def certificate_issuing(user_id, root_certificate_file=ROOT_CERTIFICATE_PATH,
     ).sign(root_key, hashes.SHA256(), default_backend())
 
     write_certificate(certificate, ISSUED_PATH + get_certificate_name(certificate))
+    save_key(certificate_key, user_id + '.pem')
 
     return certificate, certificate_key
 
@@ -509,6 +541,39 @@ def verify_certificate(certificate, root_certificate):
     except InvalidSignature:
 
         return False
+
+
+def create_pkcs12_bytes(cert_path, key_path):
+    """
+    Create p12 file (PKCS12 format) from pem files
+    Use after issuing new certificate.
+
+    Parameters
+    ----------
+    cert_path: str
+        Path to newly generated certificate
+
+    key_path: str
+        Path to newly generated key
+
+    Returns: bytes
+    -------
+    certificate and private key in PKCS12 format
+
+    """
+    pkcs12 = PKCS12()
+
+    with open(cert_path, "r") as cert_file:
+    
+        cert = load_certificate(FILETYPE_PEM, cert_file.read())
+        pkcs12.set_certificate(cert)
+
+    with open(key_path, "r") as key_file:
+
+        key = load_privatekey(FILETYPE_PEM,key_file.read())
+        pkcs12.set_privatekey(key)
+    
+    return pkcs12.export()
 
 
 def revoke_certificate(certificate):

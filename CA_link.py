@@ -124,7 +124,7 @@ def getCAStats():
 
         with context.wrap_socket(sock, server_hostname=CA_IP) as ssock:
 
-            ssock.settimeout(1)
+            ssock.settimeout(0.3)
 
             CA_stats = ''
 
@@ -151,3 +151,24 @@ def getCAStats():
                 print('error while getting CA stats')
                 ssock.close()
                 return CA_stats
+
+
+#Function used to log in using the certificate
+#returns the user id corresponding to the certificate or None in case of failure
+def login_with_certificate(cert_path):
+    
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
+
+        with context.wrap_socket(sock, server_hostname=CA_IP) as ssock:
+        
+            try:
+                #compute hash of certificate
+                digest = hash_file(cert_path)
+
+                ssock.send(digest)
+                uid = ssock.recv(BUFFER_SIZE)
+
+                return uid.decode()
+            except:
+                print('Error during login procedure using certificate')
+                return None

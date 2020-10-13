@@ -16,3 +16,13 @@ def hash_file(path):
             fb = f.read(BUFFER_SIZE) 
 
         return file_hash.digest()
+
+
+# hash bytes using sha256
+# return the hash digest (bytes)
+def hash_bytes(b):
+
+    file_hash = hashlib.sha256() 
+    file_hash.update(b)
+
+    return file_hash.digest()

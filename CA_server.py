@@ -24,6 +24,7 @@ BUFFER_SIZE = 1024
 CERTIFICATES_PATH = "certificates/"
 ISSUED_PATH = "certificates/issued/"
 REVOKED_PATH = "certificates/revoked/"
+ISSUED_HASH_PATH = CERTIFICATES_PATH + "hash/"
 KEYS_PATH = "keys/"
 ROOT_CERTIFICATE_PATH = CERTIFICATES_PATH + 'root_certificate.pem'
 ROOT_PRIVATE_KEY_PATH = KEYS_PATH + "root_private_key.pem"
@@ -41,6 +42,7 @@ revoke_OK = 'revocationOK'
 revoke_FAIL = 'revocationFAIL'
 REVOKED_ERROR = 'REVOKED_CERT'
 UNKNOWN_ERROR = 'UNKNOWN_CERT'
+ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
 
 
 #Check that the client knows the shared key. 
@@ -61,11 +63,25 @@ def checkKey(conn):
     f.close()
     return False
     
-# returns the names of all certificates in folder
-def get_all_certificates(path):
+# returns the hash of all certificates
+def get_all_hash_files(path):
 
-    return [f for f in listdir(path) if (isfile(join(path, f)) and f.endswith('.pem'))]
+    return [f for f in listdir(path) if (isfile(join(path, f)) and f.endswith('.hash'))]
 
+def extract_id_from_hashname(hashname):
+
+    buffer = ""
+
+    for c in hashname:
+        if c == '.':
+            return buffer
+        
+        buffer += c
+        
+        if c == '/':
+            buffer = ""
+
+    return buffer
 
 # Receive a certificate from the webserver
 # compare it and returns the uid associated with the certificate
@@ -76,22 +92,23 @@ def login_with_certificate(conn):
 
     hash_digest = conn.recv(BUFFER_SIZE)
 
-    certs = get_all_certificates(ISSUED_PATH)
-    # TODO: check format of certificates names
-    for c in certs :
-        h = hash_file(c)
+    certs_hash = get_all_hash_files(ISSUED_HASH_PATH)
+    
+    for cert in certs_hash :
+
+        h = open(cert, 'rb').read(BUFFER_SIZE)
 
         if hash_digest == h:
 
-            cert = read_certificate(c)
+            certificate = get_certificate_by_user_id(extract_id_from_hashname(cert))
 
-            if is_revoked(cert, crl=crl):  #certificate matching but revoked
+            if is_revoked(certificate, crl=crl):  #certificate matching but revoked
 
                 conn.send(REVOKED_ERROR.encode())
 
-            else:   #found a matching certificate. send the correpsonding uid
+            else:   #found a matching certificate. send the corresponding uid
 
-                uid = get_certificate_user_id(cert)
+                uid = get_certificate_user_id(certificate)
                 conn.send(uid.encode())
                 return 
 
@@ -122,12 +139,16 @@ def serve(conn):
         uid = conn.recv(BUFFER_SIZE)
         
         try:
-            # TODO get certificate using uid
             cert = get_certificate_by_user_id(uid.decode())
             
             crl = CRL()
-            crl.update_crl(cert)
-        
+            crl.update_crl(cert)    #revoke certificate
+
+            #remove hash of issued certificate
+            os.remove(ISSUED_HASH_PATH+uid+'.hash')
+            
+
+            #TODO send CRL to webserver since it must be published !
         except:
             conn.send(revoke_FAIL.encode())
 
@@ -137,26 +158,29 @@ def serve(conn):
     elif request.decode() == new_cert:       #launch creation of new certificate
 
         #listen for user informations (should be less than 1024 byte)
-
         uid = conn.recv(BUFFER_SIZE)
 
-        cert, private_key = certificate_issuing(uid.decode())
+        #check that certificate not already issued.
+        if get_certificate_by_user_id(uid.decode()) != None:
+            conn.send(ALREADY_ISSUED_ERROR.encode())
+            conn.close()
+            return
 
-        #send the certificate and the key #TODO format OK with requirements ????
+        cert, _ = certificate_issuing(uid.decode())
 
-        cert_path = get_certificate_name(cert)
-        key_path = #TODO 2 in one format or separate ?????
-        f = open(cert_path, 'rb')
+        pkcs12 = create_pkcs12_bytes(ISSUED_PATH+get_certificate_name(cert), KEYS_PATH+uid+".pem")
 
-        data = f.read(BUFFER_SIZE)
-        print(data.decode())
-        while(data):         
-            conn.send(data)
-            data = f.read(BUFFER_SIZE)
-
-        f.close()
+        conn.send(pkcs12)
         
+        #save hash
+        digest = hash_bytes(pkcs12)
 
+        f = open(ISSUED_HASH_PATH+uid+".hash",'wb')
+        f.write(digest)
+        f.close()
+
+        #clean secret key
+        os.remove(KEYS_PATH+uid+".pem")
 
     elif request.decode() == stats:
 
