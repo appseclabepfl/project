@@ -212,7 +212,7 @@ def serve(conn):
 
         cert, _ = certificate_issuing(uid.decode())
 
-        pkcs12 = create_pkcs12_bytes(ISSUED_PATH+get_certificate_name(cert), KEYS_PATH+uid+".pem")
+        pkcs12 = create_pkcs12_bytes(ISSUED_PATH+get_certificate_name(cert), KEYS_PATH+uid.decode()+".pem")
 
         conn.send(pkcs12)
         
@@ -233,7 +233,7 @@ def serve(conn):
 
         #display stats about the CA
 
-        stats = "ISSUED CERTS: "+get_issued_counter+", REVOKED CERTS: "+get_revoked_counter+", SERIAL NUMBER: "+get_serial_number
+        stats = "ISSUED CERTS: "+str(get_issued_counter())+", REVOKED CERTS: "+str(get_revoked_counter())+", SERIAL NUMBER: "+str(get_serial_number())
 
         conn.send(stats.encode())
 
