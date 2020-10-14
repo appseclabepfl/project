@@ -7,14 +7,18 @@ from tools import *
 
 #operations supported by the CA
 
-revoke_cert = 'REVOKE'
-new_cert = 'NEW'
-stats = 'STATS'
+#operations supported by the server
+REVOKE_CERT = 'REVOKE'
+NEW_CERT = 'NEW'
+STATS = 'STATS'
+LOGIN = 'LOGIN'
 
-#messages sent by teh CA
-
-revoke_OK = 'revocationOK'
-revoke_FAIL = 'revocationFAIL'
+#messages sent by server
+REVOKE_OK = 'revocationOK'
+REVOKE_FAIL = 'revocationFAIL'
+REVOKED_ERROR = 'REVOKED_CERT'
+UNKNOWN_ERROR = 'UNKNOWN_CERT'
+ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
 
 context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
 context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
@@ -23,7 +27,7 @@ context.load_verify_locations('/home/webserver/rootCA.pem')      #path to certif
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
     
 CA_IP = '10.10.10.3'
-CA_port = 6000
+CA_PORT = 6000
 
 BUFFER_SIZE = 1024
 
@@ -39,28 +43,38 @@ def getNewCert(savePath, userInfo):   #TODO what information should we give to t
             ssock.settimeout(0.3)
 
             try:
-                ssock.connect((CA_IP, CA_port))
+                ssock.connect((CA_IP, CA_PORT))
 
                 #send instruction
-                ssock.send(new_cert.encode())
+                ssock.send(NEW_CERT.encode())
 
                 #send user info to CA
                 ssock.send(userInfo.encode())
-
-                #retrieve certificate
-                f = open(savePath, 'wb')
                
-                data = ssock.recv(BUFFER_SIZE)               
+                data = ssock.recv(BUFFER_SIZE)  
+                
+                if(data.decode() == ALREADY_ISSUED_ERROR):   #check for error message, launches error if it is not an error message
+                    ssock.close()
+                    print('Certificate already issued for this user')
+                    return -1
+
+
+            except UnicodeError:        #it means that it is the content of the PKCSfile and not an error message
+
+                #save certificate
+                f = open(savePath, 'wb')    
                 
                 while(data):
                     f.write(data)
                     data = ssock.recv(BUFFER_SIZE)
-
+                
                 f.close()
 
                 ssock.close()
 
-            except:
+
+            except Exception as e:
+                print(e)
                 print('error occured while creating new certificate')
                 ssock.close()
                 return -1
@@ -78,22 +92,23 @@ def revokeCert(userInfo):
             ssock.settimeout(0.3)
 
             try:
-                ssock.connect((CA_IP, CA_port))
+                ssock.connect((CA_IP, CA_PORT))
 
                 #send instruction
-                ssock.send(revoke_cert.encode())
+                ssock.send(REVOKE_CERT.encode())
 
                 ssock.send(userInfo.encode())                     
 
                 status = ssock.recv(BUFFER_SIZE)
 
-                if status != revoke_OK:         #TODO retrieve CRL from core CA and publish it
+                if status.decode() != REVOKE_OK:         #TODO retrieve CRL from core CA and publish it
                     ssock.close()
                     return -1
 
                 ssock.close()
 
-            except:
+            except Exception as e:
+                print(e)
                 print('error occured while revoking the certificate')
                 ssock.close()
                 return -1
@@ -114,10 +129,10 @@ def getCAStats():
             CA_stats = ''
 
             try:
-                ssock.connect((CA_IP, CA_port))
+                ssock.connect((CA_IP, CA_PORT))
 
                 #send instruction                             
-                ssock.send(stats.encode())
+                ssock.send(STATS.encode())
 
                 data = ssock.recv(BUFFER_SIZE)
                 
@@ -129,7 +144,8 @@ def getCAStats():
                     
                 return CA_stats
 
-            except:
+            except Exception as e:
+                print(e)
                 print('error while getting CA stats')
                 ssock.close()
                 return CA_stats
@@ -144,13 +160,32 @@ def login_with_certificate(cert_path):
         with context.wrap_socket(sock, server_hostname=CA_IP) as ssock:
         
             try:
+                ssock.connect((CA_IP, CA_PORT))
+
+                #trigger login procedure
+                ssock.send(LOGIN.encode())
+
                 #compute hash of certificate
                 digest = hash_file(cert_path)
 
                 ssock.send(digest)
                 uid = ssock.recv(BUFFER_SIZE)
 
+                if (uid.decode() == REVOKED_ERROR):       #check for error messages
+                    ssock.close()
+                    print('Certificate was revoked for this user')
+                    return ""
+
+                if(uid.decode() == UNKNOWN_ERROR):
+                    ssock.close()
+                    print('Unknown certificate submitted')
+                    return ""
+
+                ssock.close()
                 return uid.decode()
-            except:
+
+            except Exception as e:
+                print(e)
                 print('Error during login procedure using certificate')
-                return None
+                ssock.close()
+                return ""

@@ -192,7 +192,8 @@ def get_certificate_by_user_id(uid):
 
     #take all valid certificates that have the uid in their name
     certs = [f for f in listdir(ISSUED_PATH) if (isfile(join(ISSUED_PATH, f)) and f.endswith('.pem') and (uid in f))]
-    valid_cert = [c for c in certs if (not is_revoked(c, crl.get_crl()))]
+    _, crl_pem = crl.get_crl()
+    valid_cert = [c for c in certs if (not is_revoked(read_certificate(ISSUED_PATH + c), crl_pem=crl_pem))]
 
     if len(valid_cert) > 0:
         return valid_cert[0]

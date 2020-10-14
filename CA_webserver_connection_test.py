@@ -4,6 +4,16 @@ from CA_link import *
 
 print(getCAStats())
 
-getNewCert('/home/webserver/test.txt', 'user1')
+getNewCert('/home/webserver/test.p12', 'userTest')
 
-revokeCert('user1')
+uid = login_with_certificate('/home/webserver/test.p12')
+
+assert(uid == 'userTest')
+
+revokeCert('userTest')
+
+uid = login_with_certificate('/home/webserver/test.p12')
+
+print(uid)
+
+assert(uid == "")

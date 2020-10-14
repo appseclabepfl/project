@@ -79,7 +79,7 @@ def extract_id_from_hashname(hashname):
 # or the "UNKNOWN_CERT" of "REVOKED_CERT" error message
 def login_with_certificate(conn):
 
-    crl = CRL() #TODO check that it remembers already revoked certs
+    crl = CRL()
 
     hash_digest = conn.recv(BUFFER_SIZE)
 
@@ -87,15 +87,18 @@ def login_with_certificate(conn):
     
     for cert in certs_hash :
 
-        h = open(cert, 'rb').read(BUFFER_SIZE)
+        h = open(ISSUED_HASH_PATH + cert, 'rb').read(BUFFER_SIZE)
 
         if hash_digest == h:
 
-            certificate = get_certificate_by_user_id(extract_id_from_hashname(cert))
+            certificate_name = get_certificate_by_user_id(extract_id_from_hashname(cert))
 
-            if is_revoked(certificate, crl=crl):  #certificate matching but revoked
+            certificate = read_certificate(ISSUED_PATH + certificate_name)
+
+            if is_revoked(certificate=certificate, crl_pem=crl.get_crl()[1]):  #certificate matching but revoked
 
                 conn.send(REVOKED_ERROR.encode())
+                return
 
             else:   #found a matching certificate. send the corresponding uid
 
@@ -219,12 +222,12 @@ def serve(conn):
         #save hash
         digest = hash_bytes(pkcs12)
 
-        f = open(ISSUED_HASH_PATH+uid+".hash",'wb')
+        f = open(ISSUED_HASH_PATH+uid.decode()+".hash",'wb')
         f.write(digest)
         f.close()
 
         #clean secret key
-        os.remove(KEYS_PATH+uid+".pem")
+        os.remove(KEYS_PATH+uid.decode()+".pem")
 
         #increase the counter of issued certificates
         increase_issued_counter()
