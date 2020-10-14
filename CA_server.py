@@ -1,6 +1,6 @@
 #CA server that listens for incoming requests from the webserver
 #The functions triggered match the system requirements as described in the "assignment" file
-#CA ip : 10.10.10.3, webserver ip: 10.20.20.2
+#CA ip : 10.10.10.3, webserver ip: 10.10.20.2
 
 
 
@@ -15,9 +15,9 @@ from tools import *
 
 
 #TLS Constants
-webserver_IP= '10.10.20.2'
+WEBSERVER_IP= '10.10.20.2'
 CA_IP = '10.10.10.3'
-port = 6000
+PORT = 6000
 BUFFER_SIZE = 1024
 
 #CA Constants
@@ -37,14 +37,14 @@ SERIAL_NUMBER = CA_DATA_PATH + "serialnb"
 #Protocol Constants
 
 #operations supported by the server
-revoke_cert = 'REVOKE'
-new_cert = 'NEW'
-stats = 'STATS'
-login = 'LOGIN'
+REVOKE_CERT = 'REVOKE'
+NEW_CERT = 'NEW'
+STATS = 'STATS'
+LOGIN = 'LOGIN'
 
 #messages sent by server
-revoke_OK = 'revocationOK'
-revoke_FAIL = 'revocationFAIL'
+REVOKE_OK = 'revocationOK'
+REVOKE_FAIL = 'revocationFAIL'
 REVOKED_ERROR = 'REVOKED_CERT'
 UNKNOWN_ERROR = 'UNKNOWN_CERT'
 ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
@@ -175,7 +175,7 @@ def serve(conn):
 
     print(request.decode())
 
-    if request.decode() == revoke_cert:      #lauch revocation process
+    if request.decode() == REVOKE_CERT:      #lauch revocation process
 
         uid = conn.recv(BUFFER_SIZE)
         
@@ -194,12 +194,12 @@ def serve(conn):
             #TODO send CRL to webserver since it must be published !
 
         except:
-            conn.send(revoke_FAIL.encode())
+            conn.send(REVOKE_FAIL.encode())
 
-        conn.send(revoke_OK.encode())
+        conn.send(REVOKE_OK.encode())
 
 
-    elif request.decode() == new_cert:       #launch creation of new certificate
+    elif request.decode() == NEW_CERT:       #launch creation of new certificate
 
         #listen for user informations (should be less than 1024 byte)
         uid = conn.recv(BUFFER_SIZE)
@@ -229,7 +229,7 @@ def serve(conn):
         #increase the counter of issued certificates
         increase_issued_counter()
 
-    elif request.decode() == stats:
+    elif request.decode() == STATS:
 
         #display stats about the CA
 
@@ -237,7 +237,7 @@ def serve(conn):
 
         conn.send(stats.encode())
 
-    elif request.decode() == login:
+    elif request.decode() == LOGIN:
 
         #check if there is a matching certificate and send back uid to webserver
         login_with_certificate(conn)
@@ -318,7 +318,7 @@ context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) 
 
-sock.bind((CA_IP, port))
+sock.bind((CA_IP, PORT))
 sock.listen(5)              #TODO how many concurrent connnections are we expecting ? DDOS protections at the server or firewall level ?
 
 ssock = context.wrap_socket(sock, server_side=True)
@@ -337,7 +337,7 @@ while True:
 
     print('Connection received from '+str(address))
 
-    if address[0] != webserver_IP:      #reject ip that are not the webserver
+    if address[0] != WEBSERVER_IP:      #reject ip that are not the webserver
         conn.close()
 
     else:   #dispatch threads
