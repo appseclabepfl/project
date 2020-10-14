@@ -17,8 +17,9 @@ revoke_OK = 'revocationOK'
 revoke_FAIL = 'revocationFAIL'
 
 context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
-context.load_verify_locations('/home/webserver/rootCA.pem')      #path to certificate for TLS 
 context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
+context.load_cert_chain('/home/webserver/webserver_certificate.pem', '/home/webserver/webserver_TLS_pk.key')       #Path to certificates for TLS comunication
+context.load_verify_locations('/home/webserver/rootCA.pem')      #path to certificate for TLS 
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
     
 CA_IP = '10.10.10.3'

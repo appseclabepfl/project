@@ -53,23 +53,6 @@ ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
 lock = Lock()
 
 
-#Check that the client knows the shared key. 
-#Prevent spoofing attacks from the client's side in case the firewall doesn't work
-def checkKey(conn):
-
-    key = conn.recv(BUFFER_SIZE)
-
-    f = open('/home/coreca/shared_key.txt','rb')
-
-    real_key = f.read(BUFFER_SIZE)
-
-    if key == real_key:
-        f.close()
-        print("webserver correctly authenticated")
-        return True
-
-    f.close()
-    return False
     
 # returns the hash of all certificates
 def get_all_hash_files(path):
@@ -184,13 +167,6 @@ def get_serial_number():
 
 #function that will communicate with the webserver and call the core CA functions
 def serve(conn):
-
-
-    #check key (prevent spoofing attacks)
-    if not checkKey(conn):
-        print("Unauthorized access: bad key")
-        conn.close()
-        return
 
     #listen for requests
     request = conn.recv(BUFFER_SIZE)
@@ -337,6 +313,7 @@ def check_counters_setup():
 context = context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
 context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
 context.load_cert_chain('/home/coreca/CA_certificate.pem', '/home/coreca/CA_TLS_pk.key')       #Path to certificates for TLS comunication
+context.load_verify_locations('/home/coreca/rootCA.pem')      #path to certificate for TLS 
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) 
