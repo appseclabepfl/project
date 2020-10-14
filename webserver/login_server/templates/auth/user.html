@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}My information{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+    <p>You are logged in!</p>
+
+
+  <h2>Update Information</h2>
+  <form method="post">
+    <label for="firstname">Firstname</label>
+    <input name="firstname" id="firstname" placeholder="{{g.user['firstname']}}">
+    <label for="lastname">Lastname</label>
+    <input name="lastname" id="lastname" placeholder="{{g.user['lastname']}}">
+    <label for="email">Email</label>
+    <input type="email" name="email" id="email" placeholder="{{g.user['email']}}">
+    <input type="submit" value="Update information">
+  </form>
+  <h2>Revoke Certificates</h2>
+  <p>Coming Soon...</p>
+{% endblock %}
