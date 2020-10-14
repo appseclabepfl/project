@@ -87,6 +87,9 @@
 /sbin/iptables -A INPUT -p tcp -m conntrack --ctstate NEW -m limit --limit 60/s --limit-burst 20 -j ACCEPT 
 /sbin/iptables -A INPUT -p tcp -m conntrack --ctstate NEW -j DROP
 
+### DROP UDP ###
+/sbin/iptables -t mangle -A PREROUTING -p udp -j DROP
+
 ### SSH brute-force protection ### 
 /sbin/iptables -A INPUT -p tcp --dport ssh -m conntrack --ctstate NEW -m recent --set 
 /sbin/iptables -A INPUT -p tcp --dport ssh -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 10 -j DROP  
