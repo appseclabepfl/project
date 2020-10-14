@@ -4,9 +4,11 @@ from flask.cli import with_appcontext
 
 
 # Constants
+PREP_USERNAME = "username_query"
 PREP_FIRSTNAME = "firstname_query"
 PREP_LASTNAME = "lastname_query"
 PREP_EMAIL = "email_query"
+PREP_PASSWORD = "password_query"
 mysql = MySQL()
 
 def init_db(app):
@@ -23,9 +25,11 @@ def init_db(app):
 # https://dev.mysql.com/doc/refman/8.0/en/sql-prepared-statements.html
 def init_prepare_statements():
     cur = mysql.connection.cursor()
+    cur.execute(f"PREPARE {PREP_USERNAME} FROM 'UPDATE users SET uid=? WHERE uid=?';")
     cur.execute(f"PREPARE {PREP_FIRSTNAME} FROM 'UPDATE users SET firstname=? WHERE uid=?';")
     cur.execute(f"PREPARE {PREP_LASTNAME} FROM 'UPDATE users SET lastname=? WHERE uid=?';")
     cur.execute(f"PREPARE {PREP_EMAIL} FROM 'UPDATE users SET email=? WHERE uid=?';")
+    cur.execute(f"PREPARE {PREP_PASSWORD} FROM 'UPDATE users SET pwd=? WHERE uid=?';")
     #mysql.connection.commit()
     cur.close()
 

@@ -6,16 +6,17 @@ from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
 )
 
-from login_server.db import *
+import db
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-# https://flask.palletsprojects.com/en/1.1.x/tutorial/views/
-
-def check_password(password, hashedpwd):
+def hash_password(password):
     sha1 = hashlib.sha1()
     sha1.update(password)
-    return sha1.hexdigest() == hashedpwd
+    return sha1.hexdigest()
+
+def check_password(password, hashedpwd):
+    return hash_password(password) == hashedpwd
 
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
@@ -24,7 +25,7 @@ def login():
         password = request.form['password'].encode('utf-8')
 
         error = None
-        pwd = execute(f"SELECT pwd FROM users WHERE uid = '{username}'")
+        pwd = db.execute(f"SELECT pwd FROM users WHERE uid = '{username}'")
 
         if not pwd or not check_password(password, pwd[0][0]):
             error = 'Invalid login.'
@@ -45,10 +46,10 @@ def load_logged_in_user():
     if user_id is None:
         g.user = None
     else:
-        user_data = execute(f"SELECT firstname,lastname,email FROM users WHERE uid = '{user_id}'")
+        user_data = db.execute(f"SELECT uid,firstname,lastname,email FROM users WHERE uid = '{user_id}'")
         if user_data:
             user_data = user_data[0] # Remove the outside tuple
-            user_dict = dict(firstname=user_data[0], lastname=user_data[1], email=user_data[2])
+            user_dict = dict(username=user_data[0], firstname=user_data[1], lastname=user_data[2], email=user_data[3])
             g.user = user_dict
 
 def login_required(view):
@@ -73,21 +74,30 @@ def user():
     # get_signature_algorithm()
     # sh1 fingerprint?
 
-    init_prepare_statements() # TODO determine why it doesn't work in the init hase sometimes...
+    db.init_prepare_statements() # TODO determine why it doesn't work in the init hase sometimes...
 
     if request.method == 'POST':
         # Get input from forms
+        username = request.form['username']
         firstname = request.form['firstname']
         lastname = request.form['lastname']
         email = request.form['email']
+        password = request.form['password'].encode('utf-8') # TODO: compute the hash client side? (hash + salt?)
 
         # If non-empty -> write new info to database
+        if username:
+            db.prepared_update(db.PREP_USERNAME, username, session['user_id'])
+            session['user_id'] = username
         if firstname:
-            prepared_update(PREP_FIRSTNAME, firstname, session['user_id'])
+            db.prepared_update(db.PREP_FIRSTNAME, firstname, session['user_id'])
         if lastname:
-            prepared_update(PREP_LASTNAME, lastname, session['user_id'])
+            db.prepared_update(db.PREP_LASTNAME, lastname, session['user_id'])
         if email:
-            prepared_update(PREP_EMAIL, email, session['user_id'])
+            db.prepared_update(db.PREP_EMAIL, email, session['user_id'])
+        if password:
+            db.prepared_update(db.PREP_PASSWORD, hash_password(password), session['user_id'])
+            logout()
+            flash("Password changed, please login again...")
 
         # If there were modifications, inform the user and refresh page        
         if firstname or lastname or email:

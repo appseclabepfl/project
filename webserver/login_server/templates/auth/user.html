@@ -5,17 +5,18 @@
 {% endblock %}
 
 {% block content %}
-    <p>You are logged in!</p>
-
-
   <h2>Update Information</h2>
   <form method="post">
+    <label for="username">Firstname</label>
+    <input name="username" id="username" placeholder="{{g.user['username']}}">
     <label for="firstname">Firstname</label>
     <input name="firstname" id="firstname" placeholder="{{g.user['firstname']}}">
     <label for="lastname">Lastname</label>
     <input name="lastname" id="lastname" placeholder="{{g.user['lastname']}}">
     <label for="email">Email</label>
     <input type="email" name="email" id="email" placeholder="{{g.user['email']}}">
+    <label for="password">Password</label>
+    <input type="password" name="password" id="password" placeholder="*****">
     <input type="submit" value="Update information">
   </form>
   <h2>Revoke Certificates</h2>
