@@ -20,5 +20,23 @@
     <input type="submit" value="Update information">
   </form>
   <h2>Revoke Certificates</h2>
-  <p>Coming Soon...</p>
+  <table id="certificates">
+    <TR>
+      <TD>valid from</TD>
+      <TD>valid until</TD>
+      <TD>serial number</TD>
+      <TD>Signing algorithm</TD>
+      <TD>Action</TD>
+    </TR>
+    {% for item in certificates %}
+    <TR>
+       <TD class="c1">{{item.notBefore}}</TD>
+       <TD class="c2">{{item.notAfter}}</TD>
+       <TD class="c3"><SPAN>{{item.serialNumber}}</SPAN></TD>
+       <TD class="c4"><SPAN>{{item.algorithm}}</SPAN></TD>
+       <TD><input type="submit" value="Revoke"></TD>
+    </TR>
+    {% endfor %}
+    </table>
+    
 {% endblock %}

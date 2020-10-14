@@ -1,7 +1,6 @@
 import functools
 import hashlib
-import OpenSSL.crypto 
-
+import OpenSSL.crypto
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
 )
@@ -63,16 +62,29 @@ def login_required(view):
 @bp.route('/user', methods=('GET', 'POST'))
 @login_required
 def user():
-    #cert = OpenSSL.crypto.load_certificate(
-    #    OpenSSL.crypto.FILETYPE_PEM, 
-    #    open('login_server/certificates/DigiCertBaltimoreCA-2G2.crt').read()
-    #)
+    # PLACHOLDER CERTIFICATE
+    cert = OpenSSL.crypto.load_certificate(
+        OpenSSL.crypto.FILETYPE_PEM, 
+        open('cert/client.crt').read()
+    )
+
+    cert2 = OpenSSL.crypto.load_certificate(
+        OpenSSL.crypto.FILETYPE_PEM, 
+        open('cert/server.crt').read()
+    )
     #print(cert.get_signature_algorithm())
     # get_notBefore()
     # get_notAfter()
     # get_serial_number()
     # get_signature_algorithm()
     # sh1 fingerprint?
+    certificates = []
+
+    
+    placeholder = dict(notBefore=cert.get_notBefore(), notAfter=cert.get_notAfter(), serialNumber=str(cert.get_serial_number())[-10:], algorithm=cert.get_signature_algorithm())
+    placeholder2 = dict(notBefore=cert2.get_notBefore(), notAfter=cert2.get_notAfter(), serialNumber=str(cert2.get_serial_number())[-10:], algorithm=cert2.get_signature_algorithm())
+    certificates.append(placeholder)
+    certificates.append(placeholder2)
 
     db.init_prepare_statements() # TODO determine why it doesn't work in the init hase sometimes...
 
@@ -103,7 +115,7 @@ def user():
         if firstname or lastname or email:
             flash("Information updated")
         return redirect(url_for('auth.user'))
-    return render_template('auth/user.html')
+    return render_template('auth/user.html', certificates=certificates)
 
 @bp.route('/logout')
 def logout():
