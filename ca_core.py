@@ -192,7 +192,7 @@ def get_certificate_by_user_id(uid):
 
     #take all valid certificates that have the uid in their name
     certs = [f for f in listdir(ISSUED_PATH) if (isfile(join(ISSUED_PATH, f)) and f.endswith('.pem') and (uid in f))]
-    valid_cert = [c for c in certs if (not is_revoked(c,crl=crl))]
+    valid_cert = [c for c in certs if (not is_revoked(c, crl.get_crl()))]
 
     if len(valid_cert) > 0:
         return valid_cert[0]
@@ -686,7 +686,7 @@ class CRL:
         return crl, crl_pem
 
 
-def is_revoked(certificate, crl_pem=None, crl_path="", crl=None):
+def is_revoked(certificate, crl_pem=None, crl_path=""):
     """
     Check if a certificate is revoked in a particular CRL
 
@@ -709,11 +709,10 @@ def is_revoked(certificate, crl_pem=None, crl_path="", crl=None):
     bool
 
     """
-    if not crl:
-
-        if crl_pem:
-            crl = pem_to_crl(crl_pem)  # x509.load_pem_x509_crl(crl_pem, backend=default_backend())
-        else:
-            crl = read_crl(crl_path)
+    
+    if crl_pem:
+        crl = pem_to_crl(crl_pem)  # x509.load_pem_x509_crl(crl_pem, backend=default_backend())
+    else:
+        crl = read_crl(crl_path)
     
     return crl.get_revoked_certificate_by_serial_number(certificate.serial_number) != None
