@@ -184,7 +184,7 @@ def get_certificate_by_user_id(uid):
 
     Returns
     -------
-    Certificate
+    Certificate: PEM format (Bytes)
         The certificate corresponding to the uid or None if there is no match or the certificate is already revoked
 
     """
@@ -196,7 +196,8 @@ def get_certificate_by_user_id(uid):
     valid_cert = [c for c in certs if (not is_revoked(read_certificate(ISSUED_PATH + c), crl_pem=crl_pem))]
 
     if len(valid_cert) > 0:
-        return valid_cert[0]
+        certificate = read_certificate(ISSUED_PATH + valid_cert[0])
+        return certificate
 
     return None
 

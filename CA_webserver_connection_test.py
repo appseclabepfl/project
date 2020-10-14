@@ -10,10 +10,10 @@ uid = login_with_certificate('/home/webserver/test.p12')
 
 assert(uid == 'userTest')
 
-revokeCert('userTest')
+status = revokeCert('userTest')
+
+assert(status == 0)
 
 uid = login_with_certificate('/home/webserver/test.p12')
-
-print(uid)
 
 assert(uid == "")

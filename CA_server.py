@@ -91,11 +91,9 @@ def login_with_certificate(conn):
 
         if hash_digest == h:
 
-            certificate_name = get_certificate_by_user_id(extract_id_from_hashname(cert))
+            certificate = get_certificate_by_user_id(extract_id_from_hashname(cert))
 
-            certificate = read_certificate(ISSUED_PATH + certificate_name)
-
-            if is_revoked(certificate=certificate, crl_pem=crl.get_crl()[1]):  #certificate matching but revoked
+            if is_revoked(certificate=certificate, crl_pem=crl.get_crl()[1]):  #certificate matching but revoked normally never goes here since hashes are deleted upon revokation
 
                 conn.send(REVOKED_ERROR.encode())
                 return
@@ -183,20 +181,22 @@ def serve(conn):
         uid = conn.recv(BUFFER_SIZE)
         
         try:
-            cert = get_certificate_by_user_id(uid.decode())
+            certificate = get_certificate_by_user_id(uid.decode())
             
             crl = CRL()
-            crl.update_crl(cert)    #revoke certificate
+            crl.update_crl(certificate)    #revoke certificate
 
-            #remove hash of issued certificate
-            os.remove(ISSUED_HASH_PATH+uid+'.hash')
+            # remove hash of issued certificate
+            os.remove(ISSUED_HASH_PATH+uid.decode()+'.hash')
 
             #increase revoke counter using lock
             increase_revoke_counter()
 
             #TODO send CRL to webserver since it must be published !
 
-        except:
+        except Exception as e:
+            print(e.with_traceback())
+            print("Failed to revoke certificate")
             conn.send(REVOKE_FAIL.encode())
 
         conn.send(REVOKE_OK.encode())
