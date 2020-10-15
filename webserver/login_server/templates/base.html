@@ -9,7 +9,8 @@
       <li><a href="{{ url_for('auth.logout') }}">Log Out</a>
       <li><a href="{{ url_for('auth.user') }}">User info</a>
     {% else %}
-      <li><a href="{{ url_for('auth.login') }}">Log In</a>
+      <li><a href="{{ url_for('auth.login') }}">Password Login</a>
+      <li><a href="{{ url_for('auth.cert') }}">Certificate Login</a>
     {% endif %}
   </ul>
 </nav>

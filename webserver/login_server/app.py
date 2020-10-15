@@ -11,6 +11,7 @@ import ssl_cert
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_mapping(
     SECRET_KEY='dev',
+    MAX_CONTENT_LENGTH=5*1024, #max file size for upload 5 kB
 )
 
 db.init_db(app)

@@ -10,6 +10,8 @@ To run:
 
 ```bash
 cd login_server
+export FLASK_APP=login_server
+export FLASK_ENV=development
 python app.py
 ```
 

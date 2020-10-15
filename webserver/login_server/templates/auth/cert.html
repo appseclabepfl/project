@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Certificate Login{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  <form method="post">
+    <label for="cert">Certficate</label>
+    <input name="cert" id="cert" placeholder="-----BEGIN CERTIFICATE----- [...] -----END CERTIFICATE-----">
+    <input type="submit" value="Log In">
+  </form>
+
+    <h1>Select certificate file</h1>
+    <form method=post enctype=multipart/form-data>
+      <input type=file name=file>
+      <input type=submit value=Upload>
+    </form>    
+{% endblock %}
