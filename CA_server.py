@@ -52,6 +52,9 @@ ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
 #Counters and synchronization
 lock = Lock()
 
+#security constant
+
+HASH_ROUNDS = 1000
 
     
 # returns the hash of all certificates
@@ -81,7 +84,11 @@ def login_with_certificate(conn):
 
     crl = CRL()
 
-    hash_digest = conn.recv(BUFFER_SIZE)
+    #retrieve login password (it is in fact the hash of the certificate)
+    psw = conn.recv(BUFFER_SIZE)
+
+    # perform round function to compare with stored hash
+    hash_digest = hash_rounds(psw, HASH_ROUNDS)
 
     certs_hash = get_all_hash_files(ISSUED_HASH_PATH)
     
@@ -186,7 +193,7 @@ def serve(conn):
             crl = CRL()
             crl.update_crl(certificate)    #revoke certificate
 
-            # remove hash of issued certificate
+            # remove hash of revoked certificate
             os.remove(ISSUED_HASH_PATH+uid.decode()+'.hash')
 
             #increase revoke counter using lock
@@ -222,8 +229,10 @@ def serve(conn):
         #save hash
         digest = hash_bytes(pkcs12)
 
+        hash_with_rounds = hash_rounds(digest, HASH_ROUNDS)
+
         f = open(ISSUED_HASH_PATH+uid.decode()+".hash",'wb')
-        f.write(digest)
+        f.write(hash_with_rounds)
         f.close()
 
         #clean secret key

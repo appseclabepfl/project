@@ -26,3 +26,15 @@ def hash_bytes(b):
     file_hash.update(b)
 
     return file_hash.digest()
+
+
+#perform rounds of hash
+def hash_rounds(b, n):
+
+    hash = b
+
+    for i in  range(0,n):
+
+        hash = hash_bytes(hash)
+
+    return hash
