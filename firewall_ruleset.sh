@@ -12,19 +12,19 @@
 /sbin/iptables -P FORWARD DROP
 
 ### Allow normal utilization traffic ###
-/sbin/iptables -A FORWARD -i enp0s3 -o enp0s8 -p tcp -s 78.78.78.2 -d 10.10.20.2 --dport 5000 -j ACCEPT
-/sbin/iptables -A FORWARD -i enp0s8 -o enp0s3 -p tcp -s 10.10.20.2 --sport 5000 -d 78.78.78.2 -j ACCEPT
+/sbin/iptables -A FORWARD -i enp0s3 -o enp0s8 -p tcp -d 10.10.20.2 --dport 5000 -j ACCEPT
+/sbin/iptables -A FORWARD -i enp0s8 -o enp0s3 -p tcp -s 10.10.20.2 --sport 5000 -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s8 -o enp0s9 -p tcp -s 10.10.20.2 -d 10.10.10.2 --dport 3306 -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s9 -o enp0s8 -p tcp -s 10.10.10.2 --sport 3306 -d 10.10.20.2 -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s8 -o enp0s9 -p tcp -s 10.10.20.2 -d 10.10.10.3 --dport 6000 -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s9 -o enp0s8 -p tcp -s 10.10.10.3 --sport 6000 -d 10.10.20.2 -j ACCEPT
 
 ### ssh access for admin ###
-/sbin/iptables -A FORWARD -i enp0s3 -o enp0s8 -p tcp -s 78.78.78.2 -d 10.10.20.2 --dport ssh -j ACCEPT
-/sbin/iptables -A FORWARD -i enp0s8 -o enp0s3 -p tcp -s 10.10.20.2 --sport ssh -d 78.78.78.2 -j ACCEPT
+/sbin/iptables -A FORWARD -i enp0s3 -o enp0s8 -p tcp -d 10.10.20.2 --dport ssh -j ACCEPT
+/sbin/iptables -A FORWARD -i enp0s8 -o enp0s3 -p tcp -s 10.10.20.2 --sport ssh -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s3 -o enp0s9 -p tcp -s 78.78.78.2 -d 10.10.10.0/24 --dport ssh -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s9 -o enp0s3 -p tcp -s 10.10.10.0/24 --sport ssh -d 78.78.78.2 -j ACCEPT
-/sbin/iptables -A INPUT -i enp0s3 -p tcp -s 78.78.78.2 -d 78.78.78.1 --dport ssh -j ACCEPT
+/sbin/iptables -A INPUT -i enp0s3 -p tcp -d 78.78.78.1 --dport ssh -j ACCEPT
 
 
 #### IPv6 ####
