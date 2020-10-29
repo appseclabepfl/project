@@ -38,11 +38,9 @@ log-error		= /var/log/mysql/error.log\n
 early-plugin-load	= keyring_file.so\n
 innodb_redo_log_encrypt = ON\n
 binlog_encryption	= ON\n
-skip-name-resolve\n
-require_secure_transport= ON\n
 \n
 \n
 [server]\n
-bind_address		= 10.10.10.2"
+bind_address		= localhost"
 
 echo -e $CONTENT > /etc/mysql/mysql.conf.d/mysqld.cnf
