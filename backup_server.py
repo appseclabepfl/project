@@ -39,11 +39,11 @@ def getName(folder, name):
 
     now = datetime.now()
 
-    return folder + name +now.strftime("%d/%m/%Y %H:%M:%S")
+    return folder +"backup"+ name +now.strftime("%d.%m.%Y %H:%M:%S")
 
 
 #wrte in log that the backup failed
-def notify_failed_backup(e, ip):
+def log_failed_backup(e, ip):
 
     f = open(LOG_PATH, 'a+')
 
@@ -57,10 +57,13 @@ def notify_failed_backup(e, ip):
 #function that will communicate with the machines and perform the backups
 def serve(conn, ip):
 
+    print("demand from : "+ip)
+
     backup_folder = ""
 
     if(ip == CA_IP):
         backup_folder = CA_BACKUP_PATH
+        print("CA recognised")
 
     elif(ip == WEBSERVER_IP):
         backup_folder = WEBSERVER_BACKUP_PATH
@@ -74,12 +77,13 @@ def serve(conn, ip):
 
     else:
         conn.close()
+        print("unrecognised client: "+ip)
         return
 
     #generate name for new backup
 
     modified_file_name = conn.recv(BUFFER_SIZE).decode()
-
+    print("name is : "+modified_file_name)
     backup_path = getName(backup_folder, modified_file_name)
 
     #perform backup
@@ -88,7 +92,7 @@ def serve(conn, ip):
 
     try:
 
-        f = open(backup_path, 'wb')
+        f = open(backup_path, 'wb+')
 
         data = conn.recv(BUFFER_SIZE)
                     
@@ -101,8 +105,8 @@ def serve(conn, ip):
     except Exception as e:
         print(e)
         print('error occured while performaing backup')
-        
-        notify_failed_backup(e, ip)
+
+        log_failed_backup(e, ip)
         return
 
     finally:
@@ -133,7 +137,7 @@ class ClientThread(Thread):
 
 context = context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
 context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
-context.load_cert_chain('/home/backupp/backup_certificate.pem', '/home/backupp/backup_TLS_pk.key')       #Path to certificates for TLS comunication
+context.load_cert_chain('/home/backupp/backup_TLS_cert.pem', '/home/backupp/backup_TLS_pk.key')       #Path to certificates for TLS comunication
 context.load_verify_locations('/home/backupp/rootCA.pem')      #path to certificate for TLS 
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 

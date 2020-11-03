@@ -6,6 +6,7 @@ from Crypto import Random
 
 BUFFER_SIZE = 1024
 KEY_BYTE_LENGTH = 32 #corresponds to 256 bits
+IV_BYTE_LENGTH = 16
 
 # hash a file using sha256
 # return the hash digest (bytes)
@@ -54,7 +55,7 @@ def encrypt(key_path, data):
     key = f.read(KEY_BYTE_LENGTH)
     
     random_generator = Random.new()
-    iv = random_generator.read(KEY_BYTE_LENGTH)
+    iv = random_generator.read(IV_BYTE_LENGTH)
 
     ctr = Counter.new(128, prefix=iv)
 
@@ -68,8 +69,8 @@ def encrypt(key_path, data):
 #decryption function
 def decrypt(key_path, data):
 
-    iv = data[0:KEY_BYTE_LENGTH -1]
-    encrypted_data = data[KEY_BYTE_LENGTH:]
+    iv = data[0:IV_BYTE_LENGTH -1]
+    encrypted_data = data[IV_BYTE_LENGTH:]
 
     f = open(key_path, 'rb')
     key = f.read(KEY_BYTE_LENGTH)
@@ -77,6 +78,8 @@ def decrypt(key_path, data):
     ctr = Counter.new(128, prefix=iv)
 
     aes = AES.new(key, AES.MODE_CTR, counter=ctr)
+
+    f.close()
 
     return aes.decrypt(encrypted_data)
 

@@ -13,8 +13,8 @@ from os.path import basename
 
 context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
 context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
-context.load_cert_chain('/home/webserver/webserver_certificate.pem', '/home/webserver/webserver_TLS_pk.key')       #Path to certificates for TLS comunication
-context.load_verify_locations('/home/webserver/rootCA.pem')      #path to certificate for TLS 
+context.load_cert_chain('/home/coreca/CA_certificate.pem', '/home/coreca/CA_TLS_pk.key')       #Path to certificates for TLS comunication
+context.load_verify_locations('/home/coreca/rootCA.pem')      #path to certificate for TLS 
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
     
 BACKUP_IP = '10.10.10.4'
@@ -25,7 +25,7 @@ BUFFER_SIZE = 1024
 
 #Path to watch
 
-HOME_DIR = ''
+HOME_DIR = '/home/coreca'
 
 
 
@@ -93,28 +93,32 @@ def launch_backup(name, path):
 
                 try:
 
+                    ssock.connect((BACKUP_IP, BACKUP_PORT))
+
                     #first send name of modified file
 
                     ssock.send(name.encode())
+                    print("name sent. Name is : "+name)
 
                     #then send the data
 
                     f = open(path, 'rb')            #TODO encrypt with ETS before sending data
 
                     data = f.read(BUFFER_SIZE)
-
+                    
                     while(data):
 
                         ssock.send(data)
                         data = f.read(BUFFER_SIZE)
 
+                    print("backup finished")
                     f.close()
 
                     ssock.close()
 
                 except Exception as e:
                     print(e)
-                    print('error occured while performaing backup')
+                    print('error occured while performing backup')
 
                 
                 return
