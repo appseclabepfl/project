@@ -34,12 +34,12 @@ WEBSERVER_BACKUP_PATH = ''
 lock = Lock()
 
 
-#generate archive name (full path) fro current time
-def getName(folder):
+#generate archive name (full path) from current time and the name of the backued up file
+def getName(folder, name):
 
     now = datetime.now()
 
-    return folder + now.strftime("%d/%m/%Y %H:%M:%S")
+    return folder + name +now.strftime("%d/%m/%Y %H:%M:%S")
 
 
 #wrte in log that the backup failed
@@ -78,7 +78,9 @@ def serve(conn, ip):
 
     #generate name for new backup
 
-    backup_path = getName(backup_folder)
+    modified_file_name = conn.recv(BUFFER_SIZE).decode()
+
+    backup_path = getName(backup_folder, modified_file_name)
 
     #perform backup
 
@@ -97,10 +99,11 @@ def serve(conn, ip):
         f.close()
 
     except Exception as e:
-                print(e)
-                print('error occured while performaing backup')
-                notify_failed_backup(e, ip)
-                return
+        print(e)
+        print('error occured while performaing backup')
+        
+        notify_failed_backup(e, ip)
+        return
 
     finally:
         lock.release()
