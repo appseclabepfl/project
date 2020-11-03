@@ -6,8 +6,8 @@ import socket
 import ssl
 from threading import Thread
 from threading import Lock
-from os import listdir
-from os.path import isfile, join
+from os import listdir, remove
+from os.path import isfile, join, exists
 from datetime import datetime
 
 #LOCAL PATHS
@@ -39,19 +39,72 @@ def getName(folder, name):
 
     now = datetime.now()
 
-    return folder +"backup"+ name +now.strftime("%d.%m.%Y %H:%M:%S")
+    return folder +"backup_"+ name +now.strftime("%d.%m.%Y%H:%M:%S")
 
 
 #wrte in log that the backup failed
 def log_failed_backup(e, ip):
 
-    f = open(LOG_PATH, 'a+')
+    f = open(LOG_PATH, 'a')
 
     f.writelines("Backup failed for ip : "+ ip+" Error: "+str(e))
 
     f.close()
     return
 
+#return True if the file is a known log file
+def islog(filename):
+
+    if("log" in filename):
+        return True                 #TODO do better
+
+    return False
+
+
+# append changes from tpm to backup path
+# remove tmp after
+def append_changes(tmp_path, backup_path):
+
+    if exists(backup_path): #if file exist append
+
+        f = open(backup_path, 'r')
+        lines = f.read().splitlines()
+
+        last_line = lines[-1]
+
+        f.close()
+
+        b = open(backup_path, 'a+')
+
+        bound = -1
+
+        with open(tmp_path, 'r') as fp:
+
+            for i, line in enumerate(fp):
+                
+                if(i > bound):
+                    b.write(line)
+
+                elif(line == last_line):
+                    bound = i
+
+        b.close()
+    
+    else:  #if file doesn't exist write
+
+        b = open(backup_path, 'w')
+
+        with open(tmp_path, 'r') as fp:
+
+            for _, line in enumerate(fp):
+                    b.write(line)
+
+
+        b.close()
+
+    #delete tmp file
+    remove(tmp_path)
+                
 
 
 #function that will communicate with the machines and perform the backups
@@ -63,7 +116,6 @@ def serve(conn, ip):
 
     if(ip == CA_IP):
         backup_folder = CA_BACKUP_PATH
-        print("CA recognised")
 
     elif(ip == WEBSERVER_IP):
         backup_folder = WEBSERVER_BACKUP_PATH
@@ -83,34 +135,75 @@ def serve(conn, ip):
     #generate name for new backup
 
     modified_file_name = conn.recv(BUFFER_SIZE).decode()
-    print("name is : "+modified_file_name)
-    backup_path = getName(backup_folder, modified_file_name)
 
-    #perform backup
 
-    lock.acquire()
+    if islog(modified_file_name): #treat logs differently since we want to happend and not create a version for each new log line
+        
+        backup_path = backup_folder+"backup_"+modified_file_name
 
-    try:
+        tmp_path = backup_folder+"tmp"
 
-        f = open(backup_path, 'wb+')
+        #write data in temp folder
+        
+        lock.acquire()
 
-        data = conn.recv(BUFFER_SIZE)
-                    
-        while(data):
-            f.write(data)
+        try:
+
+            f = open(tmp_path, 'wb')
+
             data = conn.recv(BUFFER_SIZE)
+                        
+            while(data):
+                f.write(data)
+                data = conn.recv(BUFFER_SIZE)
 
-        f.close()
+            f.close()
 
-    except Exception as e:
-        print(e)
-        print('error occured while performaing backup')
+        except Exception as e:
+            print(e)
+            print('error occured while performing backup')
 
-        log_failed_backup(e, ip)
-        return
+            log_failed_backup(e, ip)
+            conn.close()
+            return
 
-    finally:
-        lock.release()
+        finally:
+            lock.release()
+
+        #append changes at the end
+
+        append_changes(tmp_path, backup_path)
+
+    
+    else: #normal backup
+
+        backup_path = getName(backup_folder, modified_file_name)
+
+        lock.acquire()
+
+        try:
+
+            f = open(backup_path, 'wb')
+
+            data = conn.recv(BUFFER_SIZE)
+                        
+            while(data):
+                f.write(data)
+                data = conn.recv(BUFFER_SIZE)
+
+            f.close()
+
+        except Exception as e:
+            print(e)
+            print('error occured while performing backup')
+
+            log_failed_backup(e, ip)
+            conn.close()
+            return
+
+        finally:
+            lock.release()
+
 
     conn.close()
     return

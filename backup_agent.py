@@ -97,12 +97,12 @@ def launch_backup(name, path):
 
                     #first send name of modified file
 
-                    ssock.send(name.encode())
+                    ssock.send(name.encode())            
                     print("name sent. Name is : "+name)
 
                     #then send the data
 
-                    f = open(path, 'rb')            #TODO encrypt with ETS before sending data
+                    f = open(path, 'rb')            #TODO encrypt  before sending data
 
                     data = f.read(BUFFER_SIZE)
                     
@@ -114,13 +114,13 @@ def launch_backup(name, path):
                     print("backup finished")
                     f.close()
 
-                    ssock.close()
-
+                    
                 except Exception as e:
                     print(e)
                     print('error occured while performing backup')
 
-                
+                ssock.shutdown(socket.SHUT_RDWR)
+                ssock.close()
                 return
 
 #############Backup Agent##############
