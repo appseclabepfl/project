@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import socket
 import ssl
 import base64
@@ -6,8 +7,8 @@ import json
 from threading import Thread
 
 # TLS Constants
-WEBSERVER_IP = '192.168.56.1'
-DATABASE_IP = '192.168.56.101'
+WEBSERVER_IP = '10.10.20.2'
+DATABASE_IP = '10.10.10.2'
 PORT = 42069
 BUFFER_SIZE = 1024
 
@@ -41,7 +42,7 @@ def check_password(username_password, cnx):
         cursor.execute(sql_prepared_statement, (username,))
         db_password = cursor.fetchone()[0].decode()
     except mysql.connector.Error as e:
-        print("Error: " + e.msg)
+        #print("Error: " + e.msg)
         return "1"
 
     if password == db_password:
@@ -75,7 +76,7 @@ def get_user_data(username, cnx):
             return json.dumps(json_error)
 
     except mysql.connector.Error as e:
-        print("Error: " + e.msg)
+        #print("Error: " + e.msg)
         json_error = {
             "uid": "", "lastname": "",
             "firstname": "", "email": "",
@@ -129,12 +130,12 @@ def serve(conn):
     request = conn.recv(BUFFER_SIZE)
     request = request.decode()
 
-    print("GOT REQUEST: "+request)
+    #print("GOT REQUEST: "+request)
 
     try:
         cnx = cnxpool.get_connection()
     except mysql.connector.errors.PoolError as e:
-        print(e.msg)
+        #print(e.msg)
         conn.send(NO_DB_CNX.encode())
         conn.close()
         return
@@ -177,19 +178,19 @@ class ClientThread(Thread):
 
 #### SERVER ####
 
-#context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
-#context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
-#context.load_cert_chain('/home/database/CA_certificate.pem', '/home/database/CA_TLS_pk.key')       #Path to certificates for TLS comunication
-#context.load_verify_locations('/home/database/rootCA.pem')      #path to certificate for TLS
-#context.set_ciphers('ECDHE-RSA-AES256-SHA384')
+context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
+context.verify_mode = ssl.CERT_REQUIRED
+context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
+context.load_cert_chain('/home/database/database_TLS.pem', '/home/database/database_TLS.key')       #Path to certificates for TLS comunication
+context.load_verify_locations('/home/database/rootCA.pem')      #path to certificate for TLS
+context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.bind((DATABASE_IP, PORT))
 sock.listen(5)
 
-ssock = sock
-# ssock = context.wrap_socket(sock, server_side=True)
+ssock = context.wrap_socket(sock, server_side=True)
 
 while True:
 
@@ -198,7 +199,7 @@ while True:
 
     conn.settimeout(0.3)
 
-    print('Connection received from ' + str(address))
+    #print('Connection received from ' + str(address))
 
     if address[0] != WEBSERVER_IP:  # reject ip that are not the webserver
         conn.close()
@@ -209,4 +210,4 @@ while True:
             t = ClientThread(conn)
             t.start()
         except:
-            print('Error when processing request')
+            #print('Error when processing request')
