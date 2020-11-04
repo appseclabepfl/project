@@ -31,6 +31,10 @@ CA_PORT = 6000
 
 BUFFER_SIZE = 1024
 
+#PATHS
+
+CRL_PATH = "/home/webserver/crl.pem"
+
 
 
 
@@ -99,17 +103,34 @@ def revokeCert(userInfo):
 
                 ssock.send(userInfo.encode())                     
 
+                # retrieve CRL from core CA 
+
+                f = open(CRL_PATH, 'wb')
+                data = ssock.read(BUFFER_SIZE)
+
+                while(data):
+                    f.write(data)
+                    data = ssock.read(BUFFER_SIZE)
+
+                f.close()
+
+                #retrieve error message if any
+
                 status = ssock.recv(BUFFER_SIZE)
 
-                if status.decode() != REVOKE_OK:         #TODO retrieve CRL from core CA and publish it
+                if status.decode() != REVOKE_OK:      
+                    ssock.shutdown(socket.SHUT_RDWR)   
                     ssock.close()
                     return -1
 
+                ssock.shutdown(socket.SHUT_RDWR)
                 ssock.close()
 
             except Exception as e:
                 print(e)
                 print('error occured while revoking the certificate')
+                
+                ssock.shutdown(socket.SHUT_RDWR)
                 ssock.close()
                 return -1
 
@@ -140,6 +161,7 @@ def getCAStats():
                     CA_stats += data.decode()
                     data = ssock.recv(BUFFER_SIZE)
 
+                ssock.shutdown(socket.SHUT_RDWR)
                 ssock.close()
                     
                 return CA_stats
@@ -147,6 +169,7 @@ def getCAStats():
             except Exception as e:
                 print(e)
                 print('error while getting CA stats')
+                ssock.shutdown(socket.SHUT_RDWR)
                 ssock.close()
                 return CA_stats
 
@@ -172,20 +195,25 @@ def login_with_certificate(cert_path):
                 uid = ssock.recv(BUFFER_SIZE)
 
                 if (uid.decode() == REVOKED_ERROR):       #check for error messages
+                    ssock.shutdown(socket.SHUT_RDWR)
                     ssock.close()
                     print('Certificate was revoked for this user')
                     return ""
 
                 if(uid.decode() == UNKNOWN_ERROR):
+                    ssock.shutdown(socket.SHUT_RDWR)
                     ssock.close()
                     print('Unknown certificate submitted')
                     return ""
 
+                ssock.shutdown(socket.SHUT_RDWR)
                 ssock.close()
                 return uid.decode()
 
             except Exception as e:
                 print(e)
                 print('Error during login procedure using certificate')
+
+                ssock.shutdown(socket.SHUT_RDWR)
                 ssock.close()
                 return ""

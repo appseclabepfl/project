@@ -199,7 +199,18 @@ def serve(conn):
             #increase revoke counter using lock
             increase_revoke_counter()
 
-            #TODO send CRL to webserver since it must be published !
+            # send CRL to webserver since it must be published !
+            f = open(CERTIFICATES_PATH + "crl.pem", 'rb')
+
+            data = f.read(BUFFER_SIZE)
+
+            while(data):
+                conn.send(data)
+                data = f.read(BUFFER_SIZE)
+
+            f.close()
+            print("crl sent !")
+
 
         except Exception as e:
             print(e.with_traceback())
@@ -224,6 +235,7 @@ def serve(conn):
 
         pkcs12 = create_pkcs12_bytes(ISSUED_PATH+get_certificate_name(cert), KEYS_PATH+uid.decode()+".pem")
 
+        #send certificate (small so don't need to put buffer)
         conn.send(pkcs12)
         
         #save hash
