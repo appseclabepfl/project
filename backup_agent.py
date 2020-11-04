@@ -35,7 +35,7 @@ DATA = HOME_DIR+"data"
 TLS_KEY = HOME_DIR+"CA_TLS_pk.key"
 LOG = HOME_DIR+"my_log_test.txt"
 
-PATHS = list(CERTS, KEYS, DATA, TLS_KEY, LOG)
+PATHS = [CERTS, KEYS, DATA, TLS_KEY, LOG]
 
 
 #Private Key Path
@@ -107,7 +107,7 @@ class WatcherThread(Thread):
 # return true if it is sensible data
 def isSensible(name):
 
-    if (".key" in name or ".pem"):  #TODO: do better
+    if (".key" in name or ".pem" in name):  #TODO: do better
         return True
     
     return False
@@ -189,7 +189,7 @@ def launch_backup(name, path):
 
 #launch watchers for each file or directory
 
-for path in enumerate(PATHS):
+for path in PATHS:
 
     try:
         t = WatcherThread(Watcher(path))

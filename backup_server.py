@@ -6,7 +6,7 @@ import socket
 import ssl
 from threading import Thread
 from threading import Lock
-from os import listdir, remove
+from os import listdir, remove, rename
 from os.path import isfile, join, exists
 from datetime import datetime
 
@@ -65,7 +65,7 @@ def islog(filename):
 # remove tmp after
 def append_changes(tmp_path, backup_path):
 
-    if exists(backup_path): #if file exist append
+    if exists(backup_path): #if file exists append
 
         f = open(backup_path, 'r')
         lines = f.read().splitlines()
@@ -90,20 +90,13 @@ def append_changes(tmp_path, backup_path):
 
         b.close()
     
-    else:  #if file doesn't exist write
+    else:  #if file doesn't exist rename tmp file
+        rename(tmp_path, backup_path)
+        
 
-        b = open(backup_path, 'w')
-
-        with open(tmp_path, 'r') as fp:
-
-            for _, line in enumerate(fp):
-                    b.write(line)
-
-
-        b.close()
-
-    #delete tmp file
-    remove(tmp_path)
+    #delete tmp file if it exists
+    if(exists(tmp_path)):
+        remove(tmp_path)
                 
 
 
@@ -143,7 +136,7 @@ def serve(conn, ip):
 
         tmp_path = backup_folder+"tmp"
 
-        #write data in temp folder
+        #write data in temp file
         
         lock.acquire()
 
