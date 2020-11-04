@@ -14,16 +14,16 @@
 ### Allow normal utilization traffic ###
 /sbin/iptables -A FORWARD -i enp0s3 -o enp0s8 -p tcp -d 10.10.20.2 --dport 5000 -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s8 -o enp0s3 -p tcp -s 10.10.20.2 --sport 5000 -j ACCEPT
-/sbin/iptables -A FORWARD -i enp0s8 -o enp0s9 -p tcp -s 10.10.20.2 -d 10.10.10.2 --dport 3306 -j ACCEPT
-/sbin/iptables -A FORWARD -i enp0s9 -o enp0s8 -p tcp -s 10.10.10.2 --sport 3306 -d 10.10.20.2 -j ACCEPT
+/sbin/iptables -A FORWARD -i enp0s8 -o enp0s9 -p tcp -s 10.10.20.2 -d 10.10.10.2 --dport 42069 -j ACCEPT
+/sbin/iptables -A FORWARD -i enp0s9 -o enp0s8 -p tcp -s 10.10.10.2 --sport 42069 -d 10.10.20.2 -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s8 -o enp0s9 -p tcp -s 10.10.20.2 -d 10.10.10.3 --dport 6000 -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s9 -o enp0s8 -p tcp -s 10.10.10.3 --sport 6000 -d 10.10.20.2 -j ACCEPT
 
 ### ssh access for admin ###
 /sbin/iptables -A FORWARD -i enp0s3 -o enp0s8 -p tcp -d 10.10.20.2 --dport ssh -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s8 -o enp0s3 -p tcp -s 10.10.20.2 --sport ssh -j ACCEPT
-/sbin/iptables -A FORWARD -i enp0s3 -o enp0s9 -p tcp -s 78.78.78.2 -d 10.10.10.0/24 --dport ssh -j ACCEPT
-/sbin/iptables -A FORWARD -i enp0s9 -o enp0s3 -p tcp -s 10.10.10.0/24 --sport ssh -d 78.78.78.2 -j ACCEPT
+/sbin/iptables -A FORWARD -i enp0s3 -o enp0s9 -p tcp -d 10.10.10.0/24 --dport ssh -j ACCEPT
+/sbin/iptables -A FORWARD -i enp0s9 -o enp0s3 -p tcp -s 10.10.10.0/24 --sport ssh -j ACCEPT
 /sbin/iptables -A INPUT -i enp0s3 -p tcp -d 78.78.78.1 --dport ssh -j ACCEPT
 
 
@@ -60,14 +60,8 @@
 /sbin/iptables -t mangle -A PREROUTING -i enp0s3 -p tcp --tcp-flags ALL SYN,RST,ACK,FIN,URG -j DROP  
 
 ### 5: Block spoofed packets ### 
-/sbin/iptables -t mangle -A PREROUTING -i enp0s3 -s 224.0.0.0/3 -j DROP 
-/sbin/iptables -t mangle -A PREROUTING -i enp0s3 -s 169.254.0.0/16 -j DROP 
-/sbin/iptables -t mangle -A PREROUTING -i enp0s3 -s 172.16.0.0/12 -j DROP 
-/sbin/iptables -t mangle -A PREROUTING -i enp0s3 -s 192.0.2.0/24 -j DROP 
-/sbin/iptables -t mangle -A PREROUTING -i enp0s3 -s 192.168.0.0/16 -j DROP 
 /sbin/iptables -t mangle -A PREROUTING -i enp0s3 -s 10.0.0.0/8 -j DROP 
-/sbin/iptables -t mangle -A PREROUTING -i enp0s3 -s 0.0.0.0/8 -j DROP 
-/sbin/iptables -t mangle -A PREROUTING -i enp0s3 -s 240.0.0.0/5 -j DROP 
+/sbin/iptables -t mangle -A PREROUTING -i enp0s3 -s 0.0.0.0/8 -j DROP  
 /sbin/iptables -t mangle -A PREROUTING -s 127.0.0.0/8 ! -i lo -j DROP  
 
 ### 6: Drop ICMP (you usually dont need this protocol) ### 
