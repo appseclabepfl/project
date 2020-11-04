@@ -6,7 +6,9 @@ import ssl
 import time
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from os import remove
 from os.path import basename
+from tools import *
 
 
 #SSL connection
@@ -22,12 +24,15 @@ BACKUP_PORT = 5555
 
 BUFFER_SIZE = 1024
 
+#Paths
+HOME_DIR = '/home/coreca/'
 
 #Path to watch
+CERTS = HOME_DIR+"certificates"
 
-HOME_DIR = '/home/coreca'
 
-
+#Private Key Path
+backup_key_path = '/home/coreca/backup_key'
 
 
 #Watchers and Event Handlers 
@@ -51,7 +56,7 @@ class Handler(FileSystemEventHandler):
 
         elif event.event_type == 'moved':
             # Taken any action here when a file is moved.
-            launch_backup(basename(event.src_path), event.dst_path)
+            launch_backup(basename(event.src_path), event.dest_path)
 
 
         return
@@ -80,7 +85,38 @@ class Watcher():
         self.observer.join()
 
 
+# return true if it is sensible data
+def isSensible(name):
 
+    if (".key" in name or ".pem"):  #TODO: do better
+        return True
+    
+    return False
+
+# encrypt the data, store it in a file and output the path to this file
+def get_encrypted_path(path):
+
+    f = open(path, 'rb')
+
+    data = f.read(BUFFER_SIZE)
+
+    buff = data
+
+    while(data):
+        data = f.read(BUFFER_SIZE)
+        buff += data
+
+
+    encrypted = encrypt(backup_key_path, buff)
+
+    enc = open(HOME_DIR+"tmp_encrypted", 'wb')
+
+    enc.write(encrypted)
+
+    f.close()
+    enc.close()
+
+    return HOME_DIR+"tmp_encrypted"
 
 
 def launch_backup(name, path):
@@ -100,9 +136,14 @@ def launch_backup(name, path):
                     ssock.send(name.encode())            
                     print("name sent. Name is : "+name)
 
-                    #then send the data
+                    file_path = path    #original path to copy data from
 
-                    f = open(path, 'rb')            #TODO encrypt  before sending data
+                    if isSensible(name):    #encrypt if needed
+                        file_path = get_encrypted_path(path)
+
+
+                    #then send the data
+                    f = open(file_path, 'rb')            
 
                     data = f.read(BUFFER_SIZE)
                     
@@ -114,6 +155,8 @@ def launch_backup(name, path):
                     print("backup finished")
                     f.close()
 
+                    if isSensible(name) :    #remove temp file
+                        remove(file_path)
                     
                 except Exception as e:
                     print(e)
@@ -126,6 +169,6 @@ def launch_backup(name, path):
 #############Backup Agent##############
 
 #launch watchers for each file or directory
-w = Watcher(HOME_DIR)
+w = Watcher(CERTS)
 w.run()
 

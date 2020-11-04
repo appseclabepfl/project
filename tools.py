@@ -57,7 +57,9 @@ def encrypt(key_path, data):
     random_generator = Random.new()
     iv = random_generator.read(IV_BYTE_LENGTH)
 
-    ctr = Counter.new(128, prefix=iv)
+    iv_int = int.from_bytes(iv, byteorder='big')
+
+    ctr = Counter.new(128, initial_value=iv_int)
 
     aes = AES.new(key, AES.MODE_CTR, counter=ctr)
 
