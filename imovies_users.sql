@@ -51,24 +51,3 @@ UNLOCK TABLES;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-
-
--- USERS AND PERMISSIONS
-
-USE `mysql`;
-
---
--- Clean old users and permissions
---
-DROP USER IF EXISTS `webserver`@`localhost`;
-
---
--- Create users, bind them to their address and grant permissions
---
-CREATE USER `webserver`@`localhost` IDENTIFIED BY 'a$V&kG!He7z-q#XV';
-
-REVOKE ALL PRIVILEGES ON *.* FROM `webserver`@`localhost`;
-
-GRANT SELECT, UPDATE ON `imovies_users`.`users` TO `webserver`@`localhost`;
-
-FLUSH PRIVILEGES;

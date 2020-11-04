@@ -210,4 +210,4 @@ while True:
             t = ClientThread(conn)
             t.start()
         except:
-            #print('Error when processing request')
+            print('Error when processing request')
