@@ -4,6 +4,7 @@
 import socket
 import ssl
 import time
+from threading import Thread
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from os import remove
@@ -29,6 +30,12 @@ HOME_DIR = '/home/coreca/'
 
 #Path to watch
 CERTS = HOME_DIR+"certificates"
+KEYS = HOME_DIR+"keys"
+DATA = HOME_DIR+"data"
+TLS_KEY = HOME_DIR+"CA_TLS_pk.key"
+LOG = HOME_DIR+"my_log_test.txt"
+
+PATHS = list(CERTS, KEYS, DATA, TLS_KEY, LOG)
 
 
 #Private Key Path
@@ -62,7 +69,6 @@ class Handler(FileSystemEventHandler):
         return
    
 
-   
 
 
 class Watcher():
@@ -83,6 +89,19 @@ class Watcher():
             print("Error whith filesystem watchdog")
 
         self.observer.join()
+
+
+
+class WatcherThread(Thread):
+
+    def __init__(self,watcher):
+        Thread.__init__(self)
+        self.watcher = watcher
+        
+        
+    def run(self):
+        self.watcher.run()
+        return
 
 
 # return true if it is sensible data
@@ -169,6 +188,15 @@ def launch_backup(name, path):
 #############Backup Agent##############
 
 #launch watchers for each file or directory
-w = Watcher(CERTS)
-w.run()
+
+for path in enumerate(PATHS):
+
+    try:
+        t = WatcherThread(Watcher(path))
+        t.start()
+    except:
+        print('Error when launching watcher thread')
+
+
+
 
