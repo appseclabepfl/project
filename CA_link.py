@@ -11,13 +11,10 @@ from tools import *
 REVOKE_CERT = 'REVOKE'
 NEW_CERT = 'NEW'
 STATS = 'STATS'
-LOGIN = 'LOGIN'
 
 #messages sent by server
 REVOKE_OK = 'revocationOK'
 REVOKE_FAIL = 'revocationFAIL'
-REVOKED_ERROR = 'REVOKED_CERT'
-UNKNOWN_ERROR = 'UNKNOWN_CERT'
 ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
 
 context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
