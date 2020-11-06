@@ -25,7 +25,6 @@ BUFFER_SIZE = 1024
 CERTIFICATES_PATH = "certificates/"
 ISSUED_PATH = "certificates/issued/"
 REVOKED_PATH = "certificates/revoked/"
-ISSUED_HASH_PATH = CERTIFICATES_PATH + "hash/"
 KEYS_PATH = "keys/"
 ROOT_CERTIFICATE_PATH = CERTIFICATES_PATH + 'root_certificate.pem'
 ROOT_PRIVATE_KEY_PATH = KEYS_PATH + "root_private_key.pem"
@@ -90,6 +89,21 @@ def increase_issued_counter():
         lock.release()
 
 
+#Set Serial Number
+def set_serial_number(number):
+
+    lock.acquire()
+    try:
+        f = open(SERIAL_NUMBER, 'w')
+        f.write(number)
+
+    finally:
+        lock.release()
+        f.close()
+
+    return
+
+
 #Getters for CA's stats
 
 def get_issued_counter():
@@ -137,9 +151,6 @@ def serve(conn):
             crl = CRL()
             crl.update_crl(certificate)    #revoke certificate
 
-            # remove hash of revoked certificate
-            os.remove(ISSUED_HASH_PATH+uid.decode()+'.hash')
-
             #increase revoke counter using lock
             increase_revoke_counter()
 
@@ -175,14 +186,18 @@ def serve(conn):
             conn.close()
             return
 
+        #issue certificate
         cert, _ = certificate_issuing(uid.decode())
+
+        #store serial number of new cert in file
+        set_serial_number(cert.serial_number)
 
         pkcs12 = create_pkcs12_bytes(ISSUED_PATH+get_certificate_name(cert), KEYS_PATH+uid.decode()+".pem")
 
         #send certificate (small so don't need to put buffer)
         conn.send(pkcs12)
 
-        #clean pkcs
+        #remove private keys
         os.remove(KEYS_PATH+uid.decode()+".pem")
 
         #increase the counter of issued certificates
@@ -253,7 +268,7 @@ def check_counters_setup():
 
         if not os.path.exists(SERIAL_NUMBER):
             f = open(SERIAL_NUMBER,'w')
-            f.writelines("42069")
+            f.writelines("0")
             f.close()
     finally:
         lock.release()
