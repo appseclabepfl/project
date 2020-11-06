@@ -25,7 +25,6 @@ BUFFER_SIZE = 1024
 CERTIFICATES_PATH = "certificates/"
 ISSUED_PATH = "certificates/issued/"
 REVOKED_PATH = "certificates/revoked/"
-ISSUED_HASH_PATH = CERTIFICATES_PATH + "hash/"
 KEYS_PATH = "keys/"
 ROOT_CERTIFICATE_PATH = CERTIFICATES_PATH + 'root_certificate.pem'
 ROOT_PRIVATE_KEY_PATH = KEYS_PATH + "root_private_key.pem"
@@ -40,7 +39,7 @@ SERIAL_NUMBER = CA_DATA_PATH + "serialnb"
 REVOKE_CERT = 'REVOKE'
 NEW_CERT = 'NEW'
 STATS = 'STATS'
-LOGIN = 'LOGIN'
+
 
 #messages sent by server
 REVOKE_OK = 'revocationOK'
@@ -52,68 +51,8 @@ ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
 #Counters and synchronization
 lock = Lock()
 
-#security constant
 
-HASH_ROUNDS = 1000
 
-    
-# returns the hash of all certificates
-def get_all_hash_files(path):
-
-    return [f for f in listdir(path) if (isfile(join(path, f)) and f.endswith('.hash'))]
-
-def extract_id_from_hashname(hashname):
-
-    buffer = ""
-
-    for c in hashname:
-        if c == '.':
-            return buffer
-        
-        buffer += c
-        
-        if c == '/':
-            buffer = ""
-
-    return buffer
-
-# Receive a certificate from the webserver
-# compare it and returns the uid associated with the certificate
-# or the "UNKNOWN_CERT" of "REVOKED_CERT" error message
-def login_with_certificate(conn):
-
-    crl = CRL()
-
-    #retrieve login password (it is in fact the hash of the certificate)
-    psw = conn.recv(BUFFER_SIZE)
-
-    # perform round function to compare with stored hash
-    hash_digest = hash_rounds(psw, HASH_ROUNDS)
-
-    certs_hash = get_all_hash_files(ISSUED_HASH_PATH)
-    
-    for cert in certs_hash :
-
-        h = open(ISSUED_HASH_PATH + cert, 'rb').read(BUFFER_SIZE)
-
-        if hash_digest == h:
-
-            certificate = get_certificate_by_user_id(extract_id_from_hashname(cert))
-
-            if is_revoked(certificate=certificate, crl_pem=crl.get_crl()[1]):  #certificate matching but revoked normally never goes here since hashes are deleted upon revokation
-
-                conn.send(REVOKED_ERROR.encode())
-                return
-
-            else:   #found a matching certificate. send the corresponding uid
-
-                uid = get_certificate_user_id(certificate)
-                conn.send(uid.encode())
-                return 
-
-    #No matching certificate found
-    conn.send(UNKNOWN_ERROR.encode())
-    return
 
 #Increase revoke counter using locks.
 #counters are stored in the filesystem
@@ -149,6 +88,24 @@ def increase_issued_counter():
     finally:
         lock.release()
 
+
+#Set Serial Number
+def set_serial_number(number):
+
+    lock.acquire()
+    try:
+        f = open(SERIAL_NUMBER, 'w')
+        f.write(number)
+
+    finally:
+        lock.release()
+        f.close()
+
+    return
+
+
+#Getters for CA's stats
+
 def get_issued_counter():
 
     f = open(ISSUED_COUNTER, 'r')
@@ -173,6 +130,7 @@ def get_serial_number():
 
     return number
 
+
 #function that will communicate with the webserver and call the core CA functions
 def serve(conn):
 
@@ -193,13 +151,21 @@ def serve(conn):
             crl = CRL()
             crl.update_crl(certificate)    #revoke certificate
 
-            # remove hash of revoked certificate
-            os.remove(ISSUED_HASH_PATH+uid.decode()+'.hash')
-
             #increase revoke counter using lock
             increase_revoke_counter()
 
-            #TODO send CRL to webserver since it must be published !
+            # send CRL to webserver since it must be published !
+            f = open(CERTIFICATES_PATH + "crl.pem", 'rb')
+
+            data = f.read(BUFFER_SIZE)
+
+            while(data):
+                conn.send(data)
+                data = f.read(BUFFER_SIZE)
+
+            f.close()
+            print("crl sent !")
+
 
         except Exception as e:
             print(e.with_traceback())
@@ -220,22 +186,18 @@ def serve(conn):
             conn.close()
             return
 
+        #issue certificate
         cert, _ = certificate_issuing(uid.decode())
+
+        #store serial number of new cert in file
+        set_serial_number(cert.serial_number)
 
         pkcs12 = create_pkcs12_bytes(ISSUED_PATH+get_certificate_name(cert), KEYS_PATH+uid.decode()+".pem")
 
+        #send certificate (small so don't need to put buffer)
         conn.send(pkcs12)
-        
-        #save hash
-        digest = hash_bytes(pkcs12)
 
-        hash_with_rounds = hash_rounds(digest, HASH_ROUNDS)
-
-        f = open(ISSUED_HASH_PATH+uid.decode()+".hash",'wb')
-        f.write(hash_with_rounds)
-        f.close()
-
-        #clean secret key
+        #remove private keys
         os.remove(KEYS_PATH+uid.decode()+".pem")
 
         #increase the counter of issued certificates
@@ -248,11 +210,6 @@ def serve(conn):
         stats = "ISSUED CERTS: "+str(get_issued_counter())+", REVOKED CERTS: "+str(get_revoked_counter())+", SERIAL NUMBER: "+str(get_serial_number())
 
         conn.send(stats.encode())
-
-    elif request.decode() == LOGIN:
-
-        #check if there is a matching certificate and send back uid to webserver
-        login_with_certificate(conn)
 
     else:
 
@@ -311,7 +268,7 @@ def check_counters_setup():
 
         if not os.path.exists(SERIAL_NUMBER):
             f = open(SERIAL_NUMBER,'w')
-            f.writelines("42069")
+            f.writelines("0")
             f.close()
     finally:
         lock.release()
@@ -331,7 +288,7 @@ context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) 
 
 sock.bind((CA_IP, PORT))
-sock.listen(5)              #TODO how many concurrent connnections are we expecting ? DDOS protections at the server or firewall level ?
+sock.listen(5)             
 
 ssock = context.wrap_socket(sock, server_side=True)
 
