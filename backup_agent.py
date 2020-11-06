@@ -160,7 +160,6 @@ def launch_backup(name, path):
                     if isSensible(name):    #encrypt if needed
                         file_path = get_encrypted_path(path)
 
-
                     #then send the data
                     f = open(file_path, 'rb')            
 
