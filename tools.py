@@ -1,6 +1,12 @@
 import hashlib
+import os
+from Crypto.Cipher import AES
+from Crypto.Util import Counter
+from Crypto import Random
 
 BUFFER_SIZE = 1024
+KEY_BYTE_LENGTH = 32 #corresponds to 256 bits
+IV_BYTE_LENGTH = 8
 
 # hash a file using sha256
 # return the hash digest (bytes)
@@ -38,3 +44,46 @@ def hash_rounds(b, n):
         hash = hash_bytes(hash)
 
     return hash
+
+
+#encrypt data using a key with aes-ctr
+#returns the encrypted data with the IV as prefix
+
+def encrypt(key_path, data):
+
+    f = open(key_path, 'rb')
+    key = f.read(KEY_BYTE_LENGTH)
+    
+    random_generator = Random.new()
+    iv = random_generator.read(IV_BYTE_LENGTH)
+
+    iv_int = int.from_bytes(iv, byteorder='big')
+
+    ctr = Counter.new(128, initial_value=iv_int)
+
+    aes = AES.new(key, AES.MODE_CTR, counter=ctr)
+
+    f.close()
+
+    return iv + aes.encrypt(data)
+
+
+#decryption function
+def decrypt(key_path, data):
+
+    iv = data[0:IV_BYTE_LENGTH -1]
+    encrypted_data = data[IV_BYTE_LENGTH:]
+
+    f = open(key_path, 'rb')
+    key = f.read(KEY_BYTE_LENGTH)
+
+    iv_int = int.from_bytes(iv, byteorder='big')
+
+    ctr = Counter.new(128, initial_value=iv_int)
+
+    aes = AES.new(key, AES.MODE_CTR, counter=ctr)
+
+    f.close()
+
+    return aes.decrypt(encrypted_data)
+

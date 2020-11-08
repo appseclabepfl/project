@@ -11,13 +11,10 @@ from tools import *
 REVOKE_CERT = 'REVOKE'
 NEW_CERT = 'NEW'
 STATS = 'STATS'
-LOGIN = 'LOGIN'
 
 #messages sent by server
 REVOKE_OK = 'revocationOK'
 REVOKE_FAIL = 'revocationFAIL'
-REVOKED_ERROR = 'REVOKED_CERT'
-UNKNOWN_ERROR = 'UNKNOWN_CERT'
 ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
 
 context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
@@ -30,6 +27,10 @@ CA_IP = '10.10.10.3'
 CA_PORT = 6000
 
 BUFFER_SIZE = 1024
+
+#PATHS
+
+CRL_PATH = "/home/webserver/crl.pem"
 
 
 
@@ -99,17 +100,34 @@ def revokeCert(userInfo):
 
                 ssock.send(userInfo.encode())                     
 
+                # retrieve CRL from core CA 
+
+                f = open(CRL_PATH, 'wb')
+                data = ssock.read(BUFFER_SIZE)
+
+                while(data):
+                    f.write(data)
+                    data = ssock.read(BUFFER_SIZE)
+
+                f.close()
+
+                #retrieve error message if any
+
                 status = ssock.recv(BUFFER_SIZE)
 
-                if status.decode() != REVOKE_OK:         #TODO retrieve CRL from core CA and publish it
+                if status.decode() != REVOKE_OK:      
+                    ssock.shutdown(socket.SHUT_RDWR)   
                     ssock.close()
                     return -1
 
+                ssock.shutdown(socket.SHUT_RDWR)
                 ssock.close()
 
             except Exception as e:
                 print(e)
                 print('error occured while revoking the certificate')
+                
+                ssock.shutdown(socket.SHUT_RDWR)
                 ssock.close()
                 return -1
 
@@ -140,6 +158,7 @@ def getCAStats():
                     CA_stats += data.decode()
                     data = ssock.recv(BUFFER_SIZE)
 
+                ssock.shutdown(socket.SHUT_RDWR)
                 ssock.close()
                     
                 return CA_stats
@@ -147,45 +166,8 @@ def getCAStats():
             except Exception as e:
                 print(e)
                 print('error while getting CA stats')
+                ssock.shutdown(socket.SHUT_RDWR)
                 ssock.close()
                 return CA_stats
 
 
-#Function used to log in using the certificate
-#returns the user id corresponding to the certificate or None in case of failure
-def login_with_certificate(cert_path):
-    
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
-
-        with context.wrap_socket(sock, server_hostname=CA_IP) as ssock:
-        
-            try:
-                ssock.connect((CA_IP, CA_PORT))
-
-                #trigger login procedure
-                ssock.send(LOGIN.encode())
-
-                #compute hash of certificate
-                digest = hash_file(cert_path)
-
-                ssock.send(digest)
-                uid = ssock.recv(BUFFER_SIZE)
-
-                if (uid.decode() == REVOKED_ERROR):       #check for error messages
-                    ssock.close()
-                    print('Certificate was revoked for this user')
-                    return ""
-
-                if(uid.decode() == UNKNOWN_ERROR):
-                    ssock.close()
-                    print('Unknown certificate submitted')
-                    return ""
-
-                ssock.close()
-                return uid.decode()
-
-            except Exception as e:
-                print(e)
-                print('Error during login procedure using certificate')
-                ssock.close()
-                return ""
