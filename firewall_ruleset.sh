@@ -1,15 +1,26 @@
 #!/bin/bash
 
 #### FRESH START ####
+#### IPv4 ####
+/sbin/iptables -P INPUT DROP
+/sbin/iptables -P FORWARD DROP
+#### IPv6 ####
+/sbin/ip6tables -t mangle -P PREROUTING DROP
+/sbin/ip6tables -P INPUT DROP
+/sbin/ip6tables -P FORWARD DROP
+/sbin/ip6tables -P OUTPUT DROP
+
 /sbin/iptables -t mangle -F
 /sbin/iptables -F
 /sbin/ip6tables -t mangle -F
 /sbin/ip6tables -F
+/sbin/iptables -N INVALID_DROP 	#WALL
+/sbin/iptables -N FILTER_DROP	#KNOCK1
+/sbin/iptables -N RAW_DROP		#KNOCK3
+/sbin/iptables -P FORWARD ACCEPT
+/sbin/iptables -N MANGLE_DROP 	#PASSED
+/sbin/iptables -N SECURITY_DROP 	#KNOCK2
 
-
-#### IPv4 ####
-/sbin/iptables -P INPUT DROP
-/sbin/iptables -P FORWARD DROP
 
 ### Allow normal utilization traffic ###
 /sbin/iptables -A FORWARD -i enp0s3 -o enp0s8 -p tcp -d 10.10.20.2 --dport 5000 -j ACCEPT
@@ -25,15 +36,34 @@
 /sbin/iptables -A FORWARD -i enp0s3 -o enp0s9 -p tcp -d 10.10.10.0/24 --dport ssh -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s9 -o enp0s3 -p tcp -s 10.10.10.0/24 --sport ssh -j ACCEPT
 /sbin/iptables -A INPUT -i enp0s3 -p tcp -d 78.78.78.1 --dport ssh -j ACCEPT
+/sbin/iptables -A INPUT -i lo -j ACCEPT
+
+## PORT KNOCKING
+/sbin/iptables -A FORWARD -j INVALID_DROP
+
+/sbin/iptables -A FILTER_DROP -i enp0s3 -o enp0s9 -p tcp --dport 3306 -m recent --name drop1 --set -j DROP
+/sbin/iptables -A FILTER_DROP -j DROP
+
+/sbin/iptables -A SECURITY_DROP -m recent --name drop1 --remove
+/sbin/iptables -A SECURITY_DROP -i enp0s3 -o enp0s9 -p tcp --dport 8000 -m recent --name drop2 --set -j DROP
+/sbin/iptables -A SECURITY_DROP -j DROP
+
+/sbin/iptables -A RAW_DROP -m recent --name drop2 --remove
+/sbin/iptables -A RAW_DROP -i enp0s3 -o enp0s9 -p tcp --dport 6000 -m recent --name drop3 --set -j DROP
+/sbin/iptables -A RAW_DROP -j DROP
+
+/sbin/iptables -A MANGLE_DROP -m recent --name drop3 --remove
+/sbin/iptables -A MANGLE_DROP -i enp0s3 -o enp0s9 -p tcp --dport 6001 -j ACCEPT
+/sbin/iptables -A MANGLE_DROP -j DROP
+
+/sbin/iptables -A INVALID_DROP -m recent --rcheck --seconds 30 --name drop3 -j MANGLE_DROP
+/sbin/iptables -A INVALID_DROP -m recent --rcheck --seconds 10 --name drop2 -j RAW_DROP
+/sbin/iptables -A INVALID_DROP -m recent --rcheck --seconds 10 --name drop1 -j SECURITY_DROP
+/sbin/iptables -A INVALID_DROP -j FILTER_DROP
 
 
-#### IPv6 ####
-/sbin/ip6tables -t mangle -P PREROUTING DROP
-/sbin/ip6tables -P INPUT DROP
-/sbin/ip6tables -P FORWARD DROP
-/sbin/ip6tables -P OUTPUT DROP
 
-#### DDOS PROTECTION : https://javapipe.com/blog/iptables-ddos-protection/####
+#### DDOS PROTECTION ####
 
 ### 1: Drop invalid packets ### 
 /sbin/iptables -t mangle -A PREROUTING -i enp0s3 -m conntrack --ctstate INVALID -j DROP  
@@ -61,8 +91,8 @@
 
 ### 5: Block spoofed packets ### 
 /sbin/iptables -t mangle -A PREROUTING -i enp0s3 -s 10.0.0.0/8 -j DROP 
-/sbin/iptables -t mangle -A PREROUTING -i enp0s3 -s 0.0.0.0/8 -j DROP  
-/sbin/iptables -t mangle -A PREROUTING -s 127.0.0.0/8 ! -i lo -j DROP  
+/sbin/iptables -t mangle -A PREROUTING -i enp0s3 -s 0.0.0.0/8 -j DROP
+/sbin/iptables -t mangle -A PREROUTING -s 127.0.0.0/8 ! -i lo -j DROP
 
 ### 6: Drop ICMP (you usually dont need this protocol) ### 
 /sbin/iptables -t mangle -A PREROUTING -p icmp -j DROP  
