@@ -23,13 +23,13 @@ BUFFER_SIZE = 1024
 
 #CA Constants
 
-CERTIFICATES_PATH = "certificates/"
-ISSUED_PATH = "certificates/issued/"
-REVOKED_PATH = "certificates/revoked/"
-KEYS_PATH = "keys/"
+CERTIFICATES_PATH = "/home/coreca/certificates/"
+ISSUED_PATH = "/home/coreca/certificates/issued/"
+REVOKED_PATH = "/home/coreca/certificates/revoked/"
+KEYS_PATH = "/home/coreca/keys/"
 ROOT_CERTIFICATE_PATH = CERTIFICATES_PATH + 'root_certificate.pem'
 ROOT_PRIVATE_KEY_PATH = KEYS_PATH + "root_private_key.pem"
-CA_DATA_PATH = "data/"
+CA_DATA_PATH = "/home/coreca/data/"
 ISSUED_COUNTER = CA_DATA_PATH + "issued"
 REVOKED_COUNTER = CA_DATA_PATH + "revoked"
 SERIAL_NUMBER = CA_DATA_PATH + "serialnb"
@@ -146,7 +146,7 @@ def serve(conn):
     if request.decode() == REVOKE_CERT:      #lauch revocation process
 
         conn.send(CONTINUE.encode())
-
+        
         uid = conn.recv(BUFFER_SIZE)
         
         try:
@@ -159,7 +159,7 @@ def serve(conn):
                 increase_revoke_counter()
 
             # send CRL to webserver since it must be published !
-            f = open(CERTIFICATES_PATH + "crl.pem", 'rb')
+            f = open("/home/coreca/keys/root_private_key.pem", 'rb')
 
             data = f.read(BUFFER_SIZE)
 
@@ -180,8 +180,6 @@ def serve(conn):
 
 
     elif request.decode() == NEW_CERT:       #launch creation of new certificate
-
-        conn.send(CONTINUE.encode())
 
         #listen for user informations (should be less than 1024 byte)
         uid = conn.recv(BUFFER_SIZE)
@@ -294,35 +292,30 @@ context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) 
 
 try:
-    sock.bind((CA_IP, PORT1))       #try to bind port
+    sock.bind((CA_IP, PORT2))       #try to bind port
 
 except socket.error as e:
     if e.errno == errno.EADDRINUSE:     #if port already in use, use second port (happens when launching many times the server)
-        sock.bind((CA_IP, PORT2))
+        sock.bind((CA_IP, PORT1))
     else:
         # something else raised the socket.error exception
         print(e)
 
-
 sock.listen(5)             
 
-ssock = context.wrap_socket(sock, server_side=True)
+#ssock = context.wrap_socket(sock, server_side=True)
 
-
-#Setup files if it is the first startup
-getRootCertificatesAndKey()
-check_counters_setup()
 
 while True:
 
     # accept connections
-    (conn, address) = ssock.accept()
+    (conn, address) = sock.accept()
 
     conn.settimeout(0.3)
 
     print('Connection received from '+str(address))
 
-    if address[0] != WEBSERVER_IP:      #reject ip that are not the webserver
+    if address[0] == WEBSERVER_IP:      #reject ip that are not the webserver
         conn.close()
 
     else:   #dispatch threads

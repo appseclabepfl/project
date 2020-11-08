@@ -11,6 +11,8 @@ from tools import *
 REVOKE_CERT = 'REVOKE'
 NEW_CERT = 'NEW'
 STATS = 'STATS'
+CONTINUE= 'CONT'
+
 
 #messages sent by server
 REVOKE_OK = 'revocationOK'
@@ -48,6 +50,13 @@ def getNewCert(savePath, userInfo):   #TODO what information should we give to t
 
                 #send instruction
                 ssock.send(NEW_CERT.encode())
+
+                status = ssock.recv(BUFFER_SIZE)
+
+                if(status.decode() != CONTINUE):
+                    ssock.shutdown(socket.SHUT_RDWR)   
+                    ssock.close()
+                    return -1
 
                 #send user info to CA
                 ssock.send(userInfo.encode())
@@ -98,16 +107,24 @@ def revokeCert(userInfo):
                 #send instruction
                 ssock.send(REVOKE_CERT.encode())
 
+                status = ssock.recv(BUFFER_SIZE)
+
+                if(status.decode() != CONTINUE):
+                    ssock.shutdown(socket.SHUT_RDWR)   
+                    ssock.close()
+                    return -1
+
+                #send user informations (uid)
                 ssock.send(userInfo.encode())                     
 
                 # retrieve CRL from core CA 
 
                 f = open(CRL_PATH, 'wb')
-                data = ssock.read(BUFFER_SIZE)
+                data = ssock.recv(BUFFER_SIZE)
 
                 while(data):
                     f.write(data)
-                    data = ssock.read(BUFFER_SIZE)
+                    data = ssock.recv(BUFFER_SIZE)
 
                 f.close()
 
