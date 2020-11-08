@@ -40,6 +40,7 @@ SERIAL_NUMBER = CA_DATA_PATH + "serialnb"
 REVOKE_CERT = 'REVOKE'
 NEW_CERT = 'NEW'
 STATS = 'STATS'
+CONTINUE = 'CONT'
 
 
 #messages sent by server
@@ -144,6 +145,8 @@ def serve(conn):
 
     if request.decode() == REVOKE_CERT:      #lauch revocation process
 
+        conn.send(CONTINUE.encode())
+
         uid = conn.recv(BUFFER_SIZE)
         
         try:
@@ -177,6 +180,8 @@ def serve(conn):
 
 
     elif request.decode() == NEW_CERT:       #launch creation of new certificate
+
+        conn.send(CONTINUE.encode())
 
         #listen for user informations (should be less than 1024 byte)
         uid = conn.recv(BUFFER_SIZE)
