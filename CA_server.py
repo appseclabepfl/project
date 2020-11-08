@@ -4,7 +4,7 @@
 
 
 
-import socket
+import socket, errno
 import ssl
 from threading import Thread
 from threading import Lock
@@ -17,7 +17,8 @@ from tools import *
 #TLS Constants
 WEBSERVER_IP= '10.10.20.2'
 CA_IP = '10.10.10.3'
-PORT = 6000
+PORT1 = 6000
+PORT2 = 6001
 BUFFER_SIZE = 1024
 
 #CA Constants
@@ -287,7 +288,17 @@ context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) 
 
-sock.bind((CA_IP, PORT))
+try:
+    sock.bind((CA_IP, PORT1))       #try to bind port
+
+except socket.error as e:
+    if e.errno == errno.EADDRINUSE:     #if port already in use use second port
+        sock.bind((CA_IP, PORT2))
+    else:
+        # something else raised the socket.error exception
+        print(e)
+
+
 sock.listen(5)             
 
 ssock = context.wrap_socket(sock, server_side=True)
