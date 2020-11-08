@@ -23,13 +23,13 @@ BUFFER_SIZE = 1024
 
 #CA Constants
 
-CERTIFICATES_PATH = "certificates/"
-ISSUED_PATH = "certificates/issued/"
-REVOKED_PATH = "certificates/revoked/"
-KEYS_PATH = "keys/"
+CERTIFICATES_PATH = "/home/coreca/certificates/"
+ISSUED_PATH = "/home/coreca/certificates/issued/"
+REVOKED_PATH = "/home/coreca/certificates/revoked/"
+KEYS_PATH = "/home/coreca/keys/"
 ROOT_CERTIFICATE_PATH = CERTIFICATES_PATH + 'root_certificate.pem'
 ROOT_PRIVATE_KEY_PATH = KEYS_PATH + "root_private_key.pem"
-CA_DATA_PATH = "data/"
+CA_DATA_PATH = "/home/coreca/data/"
 ISSUED_COUNTER = CA_DATA_PATH + "issued"
 REVOKED_COUNTER = CA_DATA_PATH + "revoked"
 SERIAL_NUMBER = CA_DATA_PATH + "serialnb"
@@ -300,7 +300,7 @@ except socket.error as e:
 
 sock.listen(5)             
 
-ssock = context.wrap_socket(sock, server_side=True)
+#ssock = context.wrap_socket(sock, server_side=True)
 
 
 while True:
