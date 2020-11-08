@@ -103,11 +103,11 @@ def revokeCert(userInfo):
                 # retrieve CRL from core CA 
 
                 f = open(CRL_PATH, 'wb')
-                data = ssock.read(BUFFER_SIZE)
+                data = ssock.recv(BUFFER_SIZE)
 
                 while(data):
                     f.write(data)
-                    data = ssock.read(BUFFER_SIZE)
+                    data = ssock.recv(BUFFER_SIZE)
 
                 f.close()
 

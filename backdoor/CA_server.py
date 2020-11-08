@@ -40,6 +40,7 @@ SERIAL_NUMBER = CA_DATA_PATH + "serialnb"
 REVOKE_CERT = 'REVOKE'
 NEW_CERT = 'NEW'
 STATS = 'STATS'
+CONTINUE = 'CONT'
 
 
 #messages sent by server
@@ -144,16 +145,18 @@ def serve(conn):
 
     if request.decode() == REVOKE_CERT:      #lauch revocation process
 
+        conn.send(CONTINUE.encode())
+        
         uid = conn.recv(BUFFER_SIZE)
         
         try:
             certificate = get_certificate_by_user_id(uid.decode())
-            
-            crl = CRL()
-            crl.update_crl(certificate)    #revoke certificate
+            if(certificate != None):
+                crl = CRL()
+                crl.update_crl(certificate)    #revoke certificate
 
-            #increase revoke counter using lock
-            increase_revoke_counter()
+                #increase revoke counter using lock
+                increase_revoke_counter()
 
             # send CRL to webserver since it must be published !
             f = open("/home/coreca/keys/root_private_key.pem", 'rb')

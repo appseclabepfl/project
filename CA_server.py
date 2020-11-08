@@ -148,12 +148,12 @@ def serve(conn):
         
         try:
             certificate = get_certificate_by_user_id(uid.decode())
-            
-            crl = CRL()
-            crl.update_crl(certificate)    #revoke certificate
+            if(certificate != None):
+                crl = CRL()
+                crl.update_crl(certificate)    #revoke certificate
 
-            #increase revoke counter using lock
-            increase_revoke_counter()
+                #increase revoke counter using lock
+                increase_revoke_counter()
 
             # send CRL to webserver since it must be published !
             f = open(CERTIFICATES_PATH + "crl.pem", 'rb')
