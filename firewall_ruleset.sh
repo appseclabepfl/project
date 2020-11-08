@@ -38,29 +38,31 @@
 /sbin/iptables -A INPUT -i enp0s3 -p tcp -d 78.78.78.1 --dport ssh -j ACCEPT
 /sbin/iptables -A INPUT -i lo -j ACCEPT
 
+
 ## PORT KNOCKING
+/sbin/iptables -A FORWARD -i enp0s9 -o enp0s3 -p tcp -s 10.10.10.3 --sport 6001 -j ACCEPT
+
 /sbin/iptables -A FORWARD -j INVALID_DROP
 
-/sbin/iptables -A FILTER_DROP -i enp0s3 -o enp0s9 -p tcp --dport 3306 -m recent --name drop1 --set -j DROP
+/sbin/iptables -A FILTER_DROP -i enp0s3 -p tcp --dport 3306 -m recent --name drop1 --set -j DROP
 /sbin/iptables -A FILTER_DROP -j DROP
 
 /sbin/iptables -A SECURITY_DROP -m recent --name drop1 --remove
-/sbin/iptables -A SECURITY_DROP -i enp0s3 -o enp0s9 -p tcp --dport 8000 -m recent --name drop2 --set -j DROP
+/sbin/iptables -A SECURITY_DROP -i enp0s3 -p tcp --dport 8000 -m recent --name drop2 --set -j DROP
 /sbin/iptables -A SECURITY_DROP -j DROP
 
 /sbin/iptables -A RAW_DROP -m recent --name drop2 --remove
-/sbin/iptables -A RAW_DROP -i enp0s3 -o enp0s9 -p tcp --dport 6000 -m recent --name drop3 --set -j DROP
+/sbin/iptables -A RAW_DROP -i enp0s3 -p tcp --dport 6000 -m recent --name drop3 --set -j DROP
 /sbin/iptables -A RAW_DROP -j DROP
 
-/sbin/iptables -A MANGLE_DROP -m recent --name drop3 --remove
-/sbin/iptables -A MANGLE_DROP -i enp0s3 -o enp0s9 -p tcp --dport 6001 -j ACCEPT
+#/sbin/iptables -A MANGLE_DROP -m recent --name drop3 --remove
+/sbin/iptables -A MANGLE_DROP -i enp0s3 -p tcp --dport 6001 -j ACCEPT
 /sbin/iptables -A MANGLE_DROP -j DROP
 
-/sbin/iptables -A INVALID_DROP -m recent --rcheck --seconds 30 --name drop3 -j MANGLE_DROP
-/sbin/iptables -A INVALID_DROP -m recent --rcheck --seconds 10 --name drop2 -j RAW_DROP
-/sbin/iptables -A INVALID_DROP -m recent --rcheck --seconds 10 --name drop1 -j SECURITY_DROP
+/sbin/iptables -A INVALID_DROP -m recent --rcheck --seconds 5 --name drop3 -j MANGLE_DROP
+/sbin/iptables -A INVALID_DROP -m recent --rcheck --seconds 5 --name drop2 -j RAW_DROP
+/sbin/iptables -A INVALID_DROP -m recent --rcheck --seconds 5 --name drop1 -j SECURITY_DROP
 /sbin/iptables -A INVALID_DROP -j FILTER_DROP
-
 
 
 #### DDOS PROTECTION ####
