@@ -28,22 +28,28 @@ input[type=submit] { align-self: start; min-width: 10em; }
 #certificates {
     font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
     border-collapse: collapse;
+    table-layout: fixed;
     width: 100%;
   }
   
-  #certificates td, #certificates th {
-    border: 1px solid #ddd;
-    padding: 8px;
-  }
-  
-  #certificates tr:nth-child(even){background-color: #f2f2f2;}
-  
-  #certificates tr:hover {background-color: #ddd;}
-  
-  #certificates th {
-    padding-top: 12px;
-    padding-bottom: 12px;
-    text-align: left;
-    background-color: #4CAF50;
-    color: white;
-  }
+#certificates td, #certificates th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+#certificates tr:nth-child(even){background-color: #f2f2f2;}
+
+#certificates tr:hover {background-color: #ddd;}
+
+#certificates th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: #4CAF50;
+  color: white;
+}
+
+#certificates td {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}

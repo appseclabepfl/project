@@ -1,7 +1,8 @@
 import functools
 import hashlib
 import OpenSSL.crypto
-import datetime
+from datetime import datetime
+from flask import send_file
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
@@ -13,14 +14,6 @@ import db
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-def hash_password(password):
-    sha1 = hashlib.sha1()
-    sha1.update(password)
-    return sha1.hexdigest()
-
-def check_password(password, hashedpwd):
-    return hash_password(password) == hashedpwd
-
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
     if request.method == 'POST':
@@ -28,9 +21,8 @@ def login():
         password = request.form['password'].encode('utf-8')
 
         error = None
-        pwd = db.execute(f"SELECT pwd FROM users WHERE uid = '{username}'")
 
-        if not pwd or not check_password(password, pwd[0][0]):
+        if not check_password(password):
             error = 'Invalid login.'
 
         if error is None:
@@ -63,7 +55,6 @@ def cert():
                 flash("Invalid file")
                 return redirect(request.url)
         elif request.form['cert']:
-            #flash("Manual copy/paste")
             check_certificate(bytes(request.form['cert'], 'utf-8'))
         else:
             flash('Enter a certificate manually or select a file...')
@@ -84,6 +75,8 @@ def load_logged_in_user():
         user_data = db.execute(f"SELECT uid,firstname,lastname,email FROM users WHERE uid = '{user_id}'")
         if user_data:
             user_data = user_data[0] # Remove the outside tuple
+            # TODO use DB API for getting the data
+            # get_user_data(username, cnx)
             user_dict = dict(username=user_data[0], firstname=user_data[1], lastname=user_data[2], email=user_data[3])
             g.user = user_dict
 
@@ -95,65 +88,49 @@ def login_required(view):
         return view(**kwargs)
     return wrapped_view
 
-@bp.route('/user', methods=('GET', 'POST'))
+
+@bp.route('/update_info', methods=['POST'])
+@login_required
+def update_info():
+    username = request.form['username']
+    firstname = request.form['firstname']
+    lastname = request.form['lastname']
+    email = request.form['email']
+    password = request.form['password']
+
+    # TODO: change to use DB API to chang information
+    return update_information(username, firstname, lastname, email, password)
+
+@bp.route('/issue_cert', methods=['POST'])
+@login_required
+def issue_cert():
+    password = request.form['password2']
+
+    if check_password(password):
+        # TODO send certificate issuing request to coreCA
+        # And return real certificate instead of placeholder
+        return send_file("cert/client.crt", as_attachment=True)
+    else:
+        flash("Invalid password...")
+        return render_template('auth/user.html')
+
+@bp.route('/revoke_cert', methods=['POST'])
+@login_required
+def revoke_cert():
+    password = request.form['password3']
+
+    if check_password(password):
+        # TODO send revokation request to coreCA
+        flash("Certificate revoked...")
+    else:
+        flash("Invalid password...")
+    return render_template('auth/user.html')
+
+@bp.route('/user', methods=['GET'])
 @login_required
 def user():
-    # PLACHOLDER CERTIFICATE
-    cert = OpenSSL.crypto.load_certificate(
-        OpenSSL.crypto.FILETYPE_PEM, 
-        open('cert/client.crt').read()
-    )
-
-    cert2 = OpenSSL.crypto.load_certificate(
-        OpenSSL.crypto.FILETYPE_PEM, 
-        open('cert/server.crt').read()
-    )
-    #print(cert.get_signature_algorithm())
-    # get_notBefore()
-    # get_notAfter()
-    # get_serial_number()
-    # get_signature_algorithm()
-    # sh1 fingerprint?
-    certificates = []
-
-    #ssl_date_fmt = r'%b %d %H:%M:%S %Y %Z' #https://stackoverflow.com/questions/45810069/how-to-fetch-the-ssl-certificate-value-whether-its-expired-or-not/52298575
-    #flash(datetime.datetime.strptime(str(cert.get_notAfter()), ssl_date_fmt))
-
-    placeholder = dict(notBefore=cert.get_notBefore(), notAfter=cert.get_notAfter(), serialNumber=str(cert.get_serial_number())[-10:], algorithm=cert.get_signature_algorithm())
-    placeholder2 = dict(notBefore=cert2.get_notBefore(), notAfter=cert2.get_notAfter(), serialNumber=str(cert2.get_serial_number())[-10:], algorithm=cert2.get_signature_algorithm())
-    certificates.append(placeholder)
-    certificates.append(placeholder2)
-
-    db.init_prepare_statements() # TODO determine why it doesn't work in the init hase sometimes...
-
-    if request.method == 'POST':
-        # Get input from forms
-        username = request.form['username']
-        firstname = request.form['firstname']
-        lastname = request.form['lastname']
-        email = request.form['email']
-        password = request.form['password'].encode('utf-8') # TODO: compute the hash client side? (hash + salt?)
-
-        # If non-empty -> write new info to database
-        if username:
-            db.prepared_update(db.PREP_USERNAME, username, session['user_id'])
-            session['user_id'] = username
-        if firstname:
-            db.prepared_update(db.PREP_FIRSTNAME, firstname, session['user_id'])
-        if lastname:
-            db.prepared_update(db.PREP_LASTNAME, lastname, session['user_id'])
-        if email:
-            db.prepared_update(db.PREP_EMAIL, email, session['user_id'])
-        if password:
-            db.prepared_update(db.PREP_PASSWORD, hash_password(password), session['user_id'])
-            logout()
-            flash("Password changed, please login again...")
-
-        # If there were modifications, inform the user and refresh page        
-        if firstname or lastname or email:
-            flash("Information updated")
-        return redirect(url_for('auth.user'))
-    return render_template('auth/user.html', certificates=certificates)
+    certificate = get_user_certificate()
+    return render_template('auth/user.html', certificate=certificate)
 
 @bp.route('/logout')
 def logout():
@@ -162,3 +139,49 @@ def logout():
 
 
 
+def check_password(password):
+    #TODO link up with Database API
+    # check_password(username_password, cnx)
+    return True
+
+def update_information(username, firstname, lastname, email, password):
+    db.init_prepare_statements() # determine why it doesn't work in the init hase sometimes...
+
+    if username:
+        db.prepared_update(db.PREP_USERNAME, username, session['user_id'])
+        session['user_id'] = username
+    if firstname:
+        db.prepared_update(db.PREP_FIRSTNAME, firstname, session['user_id'])
+    if lastname:
+        db.prepared_update(db.PREP_LASTNAME, lastname, session['user_id'])
+    if email:
+        db.prepared_update(db.PREP_EMAIL, email, session['user_id'])
+    if password:
+        db.prepared_update(db.PREP_PASSWORD, password, session['user_id'])
+        logout()
+        flash("Password changed, please login again...")
+
+    # If there were modifications, inform the user and refresh page        
+    if firstname or lastname or email:
+        flash("Information updated")
+    return redirect(url_for('auth.user'))
+
+def human_readable(date_bytes):
+    return datetime.strptime(date_bytes.decode('ascii'), '%Y%m%d%H%M%SZ')
+
+def get_user_certificate():
+    #TODO: get real cert from coreCA
+
+    # PLACEHOLDER CERTIFICATE
+    cert = OpenSSL.crypto.load_certificate(
+        OpenSSL.crypto.FILETYPE_PEM, 
+        open('cert/client.crt').read()
+    )
+    start_date = human_readable(cert.get_notBefore())
+    end_date = human_readable(cert.get_notAfter())
+    serial = str(cert.get_serial_number())#[-10:]
+    sha1 = cert.digest("sha1").decode("utf-8")
+    
+    # The dict structure (notBefore, notAfterm serialNumber, fingerprint) is used in the html template, do not change!
+    certificate = dict(notBefore=start_date, notAfter=end_date, serialNumber=serial, fingerprint=sha1)
+    return certificate

@@ -6,7 +6,7 @@
 
 {% block content %}
   <h2>Update Information</h2>
-  <form method="post">
+  <form action="{{ url_for('auth.update_info') }}" method="post">
     <label for="username">Firstname</label>
     <input name="username" id="username" placeholder="{{g.user['username']}}">
     <label for="firstname">Firstname</label>
@@ -17,26 +17,42 @@
     <input type="email" name="email" id="email" placeholder="{{g.user['email']}}">
     <label for="password">Password</label>
     <input type="password" name="password" id="password" placeholder="*****">
-    <input type="submit" value="Update information">
+    <input onclick="updateInfoSHA(this)" type="submit" value="Update information">
   </form>
-  <h2>Revoke Certificates</h2>
+
+  <h2>Generate Certificate</h2>
+  <p>In order to request a new certificate, you must confirm your password.</p>
+  <form action="{{ url_for('auth.issue_cert') }}" method="post">
+    <label for="password">Password</label>
+    <input type="password" name="password2" id="password2">
+    <input onclick="return issueCertSHA(this)" type="submit" value="Generate new certificate">
+  </form>
+
+  <h2>Revoke Certificate</h2>
+  {% if certificate %}
   <table id="certificates">
     <TR>
       <TD>valid from</TD>
       <TD>valid until</TD>
       <TD>serial number</TD>
-      <TD>Signing algorithm</TD>
+      <TD>SHA-1 fingerprint</TD>
       <TD>Action</TD>
     </TR>
-    {% for item in certificates %}
+    
     <TR>
-       <TD class="c1">{{item.notBefore}}</TD>
-       <TD class="c2">{{item.notAfter}}</TD>
-       <TD class="c3"><SPAN>{{item.serialNumber}}</SPAN></TD>
-       <TD class="c4"><SPAN>{{item.algorithm}}</SPAN></TD>
-       <TD><input type="submit" value="Revoke"></TD>
+       <TD>{{certificate.notBefore}}</TD>
+       <TD>{{certificate.notAfter}}</TD>
+       <TD>{{certificate.serialNumber}}</TD>
+       <TD>{{certificate.fingerprint}}</TD>
+       <TD>
+          <form action="{{ url_for('auth.revoke_cert') }}" method="post">
+          <input type="password" name="password3" id="password3" placeholder="password">
+          <input onclick="revokeSHA(this)" type="submit" value="Revoke">
+      </form></TD>
     </TR>
-    {% endfor %}
     </table>
+    {% else %}
+      <p>No certificate to display</p>
+    {% endif %}
     
 {% endblock %}
