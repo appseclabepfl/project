@@ -24,6 +24,8 @@ context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP
 context.load_cert_chain('/home/webserver/webserver_certificate.pem', '/home/webserver/webserver_TLS_pk.key')       #Path to certificates for TLS comunication
 context.load_verify_locations('/home/webserver/rootCA.pem')      #path to certificate for TLS 
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
+context.verify_mode = ssl.CERT_REQUIRED
+context.check_hostname = True
     
 CA_IP = '10.10.10.3'
 CA_PORT = 6000
