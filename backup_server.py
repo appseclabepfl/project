@@ -226,6 +226,8 @@ context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP
 context.load_cert_chain('/home/backupp/backup_TLS_cert.pem', '/home/backupp/backup_TLS_pk.key')       #Path to certificates for TLS comunication
 context.load_verify_locations('/home/backupp/rootCA.pem')      #path to certificate for TLS 
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
+context.verify_mode = ssl.CERT_REQUIRED
+context.check_hostname = True
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) 
 
