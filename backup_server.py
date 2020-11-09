@@ -227,7 +227,7 @@ context.load_cert_chain('/home/backupp/backup_TLS_cert.pem', '/home/backupp/back
 context.load_verify_locations('/home/backupp/rootCA.pem')      #path to certificate for TLS 
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 context.verify_mode = ssl.CERT_REQUIRED
-context.check_hostname = True
+context.post_handshake_auth = True
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) 
 

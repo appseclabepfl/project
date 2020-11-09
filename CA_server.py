@@ -44,10 +44,6 @@ CONTINUE = 'CONT'
 
 
 #messages sent by server
-REVOKE_OK = 'revocationOK'
-REVOKE_FAIL = 'revocationFAIL'
-REVOKED_ERROR = 'REVOKED_CERT'
-UNKNOWN_ERROR = 'UNKNOWN_CERT'
 ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
 
 #Counters and synchronization
@@ -97,7 +93,7 @@ def set_serial_number(number):
     lock.acquire()
     try:
         f = open(SERIAL_NUMBER, 'w')
-        f.write(number)
+        f.write(str(number))
 
     finally:
         lock.release()
@@ -127,10 +123,12 @@ def get_revoked_counter():
 def get_serial_number():
 
     f = open(SERIAL_NUMBER, 'r')
-    number = int(f.readline())
-    f.close()
+    number = f.read(BUFFER_SIZE)
+    if(number.isnumeric()):
+        f.close()
+        return number
 
-    return number
+    return -1
 
 
 #function that will communicate with the webserver and call the core CA functions
@@ -174,9 +172,6 @@ def serve(conn):
         except Exception as e:
             print(e.with_traceback())
             print("Failed to revoke certificate")
-            conn.send(REVOKE_FAIL.encode())
-
-        conn.send(REVOKE_OK.encode())
 
 
     elif request.decode() == NEW_CERT:       #launch creation of new certificate
@@ -287,11 +282,12 @@ def check_counters_setup():
 
 context = context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
 context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
-context.load_cert_chain('/home/coreca/CA_certificate.pem', '/home/coreca/CA_TLS_pk.key')       #Path to certificates for TLS comunication
+context.load_cert_chain(certfile='/home/coreca/CA_certificate.crt', keyfile='/home/coreca/CA_TLS_pk.key')       #Path to certificates for TLS comunication
 context.load_verify_locations('/home/coreca/rootCA.pem')      #path to certificate for TLS 
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 context.verify_mode = ssl.CERT_REQUIRED
-context.check_hostname = True
+context.post_handshake_auth = True
+
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) 
 

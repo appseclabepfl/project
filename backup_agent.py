@@ -20,8 +20,7 @@ context.load_cert_chain('/home/coreca/CA_certificate.pem', '/home/coreca/CA_TLS_
 context.load_verify_locations('/home/coreca/rootCA.pem')      #path to certificate for TLS 
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 context.verify_mode = ssl.CERT_REQUIRED
-context.check_hostname = True
-    
+
 BACKUP_IP = '10.10.10.4'
 BACKUP_PORT = 5555
 

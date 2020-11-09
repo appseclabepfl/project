@@ -3,7 +3,7 @@
 
 import socket
 import ssl
-from tools import *
+
 
 #operations supported by the CA
 
@@ -15,17 +15,15 @@ CONTINUE= 'CONT'
 
 
 #messages sent by server
-REVOKE_OK = 'revocationOK'
-REVOKE_FAIL = 'revocationFAIL'
 ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
 
 context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
 context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
 context.load_cert_chain('/home/webserver/webserver_certificate.pem', '/home/webserver/webserver_TLS_pk.key')       #Path to certificates for TLS comunication
-context.load_verify_locations('/home/webserver/rootCA.pem')      #path to certificate for TLS 
+context.load_verify_locations('/home/webserver/rootCA.crt')      #path to certificate for TLS 
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 context.verify_mode = ssl.CERT_REQUIRED
-context.check_hostname = True
+
     
 CA_IP = '10.10.10.3'
 CA_PORT = 6000
@@ -130,14 +128,6 @@ def revokeCert(userInfo):
 
                 f.close()
 
-                #retrieve error message if any
-
-                status = ssock.recv(BUFFER_SIZE)
-
-                if status.decode() != REVOKE_OK:      
-                    ssock.shutdown(socket.SHUT_RDWR)   
-                    ssock.close()
-                    return -1
 
                 ssock.shutdown(socket.SHUT_RDWR)
                 ssock.close()
