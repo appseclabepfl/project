@@ -3,6 +3,8 @@ import hashlib
 import OpenSSL.crypto
 from datetime import datetime
 from flask import send_file
+import os
+import struct
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
@@ -34,7 +36,7 @@ def login():
 
     return render_template('auth/login.html')
 
-ALLOWED_EXTENSIONS = {'crt'}
+ALLOWED_EXTENSIONS = {'p12'}
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -42,28 +44,30 @@ def allowed_file(filename):
 
 @bp.route('/cert', methods=('GET', 'POST'))
 def cert():
+    if request.method == 'GET':
+        session['challenge'] = random_challenge()
+        return render_template('auth/cert.html', challenge=session['challenge'])
     if request.method == 'POST':
         if 'file' in request.files:
             file = request.files['file']
-            if file.filename == '':
-                flash('Enter a certificate manually or select a file...')
-                return redirect(request.url)
-            if file and allowed_file(file.filename):
-                check_certificate(file.read())
-                return redirect(request.url)
+            if file and file.filename != '' and allowed_file(file.filename):
+                response = request.form['challenge']
+                #print(f"Answering to challenge {session['challenge']}")
+                check_certificate(file.read(), response)
+                #TODO: if ok -> login
+                session['challenge'] = random_challenge() # New challenge at each reload
+                return render_template('auth/cert.html', challenge=session['challenge'])
             else:
-                flash("Invalid file")
-                return redirect(request.url)
-        elif request.form['cert']:
-            check_certificate(bytes(request.form['cert'], 'utf-8'))
+                flash("Invalid file format")
+                return render_template('auth/cert.html', challenge=session['challenge'])
         else:
-            flash('Enter a certificate manually or select a file...')
-            return redirect(request.url)
-    return render_template('auth/cert.html')
+            flash('Please select a file...')
+            return render_template('auth/cert.html', challenge=session['challenge'])
+    return render_template('auth/cert.html', challenge=session['challenge'])
 
-def check_certificate(bytestring):
-    #TODO
-    flash(f"Invalid certificate:\n{bytestring}")
+def check_certificate(bytestring, response):
+    #TODO check response + certificate validity
+    flash(f"Challenge Response {response}")
 
 @bp.before_app_request
 def load_logged_in_user():
@@ -185,3 +189,7 @@ def get_user_certificate():
     # The dict structure (notBefore, notAfterm serialNumber, fingerprint) is used in the html template, do not change!
     certificate = dict(notBefore=start_date, notAfter=end_date, serialNumber=serial, fingerprint=sha1)
     return certificate
+
+def random_challenge():
+    # Random int from os.urandom() -> crypto secure
+    return struct.unpack('i', os.urandom(4))[0]

@@ -5,15 +5,17 @@
 {% endblock %}
 
 {% block content %}
-  <form method="post">
-    <label for="cert">Certficate</label>
-    <input name="cert" id="cert" placeholder="-----BEGIN CERTIFICATE----- [...] -----END CERTIFICATE-----">
-    <input type="submit" value="Log In">
-  </form>
-
-    <h1>Select certificate file</h1>
+    <h2>Please select the certificate</h2>
     <form method=post enctype=multipart/form-data>
-      <input type=file name=file>
-      <input type=submit value=Upload>
-    </form>    
+      <input type=hidden name="challenge" id="challenge" value="{{challenge}}">
+      <input type=file id="file" name=file>
+      <input onclick="computeResponse(self)" type=submit value=Login>
+    </form>
+
+    <script>
+      const form = document.querySelector('form');
+        form.addEventListener('submit', (e) => {
+        e.preventDefault();
+    });
+    </script>
 {% endblock %}
