@@ -25,10 +25,10 @@ BUFFER_SIZE = 1024
 
 
 #Protocol Constants
-CA_BACKUP_PATH = ''
-DB_BACKUP_PATH = ''
-FIREWALL_BACKUP_PATH = ''
-WEBSERVER_BACKUP_PATH = ''
+CA_BACKUP_PATH = 'CA_backup/'
+DB_BACKUP_PATH = 'DB_backup/'
+FIREWALL_BACKUP_PATH = 'FIREWALL_backup/'
+WEBSERVER_BACKUP_PATH = 'WEBSERSER_backup/'
 
 #Counters and synchronization
 lock = Lock()
