@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}My information{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  <h2>Update Information</h2>
+  <form action="{{ url_for('auth.update_info') }}" method="post">
+    <label for="username">Firstname</label>
+    <input name="username" id="username" placeholder="{{g.user['username']}}">
+    <label for="firstname">Firstname</label>
+    <input name="firstname" id="firstname" placeholder="{{g.user['firstname']}}">
+    <label for="lastname">Lastname</label>
+    <input name="lastname" id="lastname" placeholder="{{g.user['lastname']}}">
+    <label for="email">Email</label>
+    <input type="email" name="email" id="email" placeholder="{{g.user['email']}}">
+    <label for="password">Password</label>
+    <input type="password" name="password" id="password" placeholder="*****">
+    <input onclick="updateInfoSHA(this)" type="submit" value="Update information">
+  </form>
+
+  <h2>Generate Certificate</h2>
+  <p>In order to request a new certificate, you must confirm your password.</p>
+  <form action="{{ url_for('auth.issue_cert') }}" method="post">
+    <label for="password">Password</label>
+    <input type="password" name="password2" id="password2">
+    <input onclick="return issueCertSHA(this)" type="submit" value="Generate new certificate">
+  </form>
+
+  <h2>Revoke Certificate</h2>
+  {% if certificate %}
+  <table id="certificates">
+    <TR>
+      <TD>valid from</TD>
+      <TD>valid until</TD>
+      <TD>serial number</TD>
+      <TD>SHA-1 fingerprint</TD>
+      <TD>Action</TD>
+    </TR>
+    
+    <TR>
+       <TD>{{certificate.notBefore}}</TD>
+       <TD>{{certificate.notAfter}}</TD>
+       <TD>{{certificate.serialNumber}}</TD>
+       <TD>{{certificate.fingerprint}}</TD>
+       <TD>
+          <form action="{{ url_for('auth.revoke_cert') }}" method="post">
+          <input type="password" name="password3" id="password3" placeholder="password">
+          <input onclick="revokeSHA(this)" type="submit" value="Revoke">
+      </form></TD>
+    </TR>
+    </table>
+    {% else %}
+      <p>No certificate to display</p>
+    {% endif %}
+    
+{% endblock %}
