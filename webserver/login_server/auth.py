@@ -146,7 +146,7 @@ def issue_cert():
         # TODO send certificate issuing request to coreCA
         # + revoke current certificate if there is one
         # And return real certificate instead of placeholder
-        return send_file("cert/client.crt", as_attachment=True)
+        return send_file("cert/server.crt", as_attachment=True)
     else:
         flash("Invalid password...")
         return render_template('auth/user.html')
@@ -219,7 +219,7 @@ def get_user_certificate():
     # PLACEHOLDER CERTIFICATE
     cert = crypto.load_certificate(
         crypto.FILETYPE_PEM, 
-        open('cert/client.crt').read()
+        open('cert/server.crt').read()
     )
     start_date = human_readable(cert.get_notBefore())
     end_date = human_readable(cert.get_notAfter())
