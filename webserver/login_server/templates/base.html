@@ -1,6 +1,10 @@
 <!doctype html>
 <title>{% block title %}{% endblock %}</title>
+{% if session["phone"] %}
+<link rel="stylesheet" href="{{ url_for('static', filename='responsive.css') }}">
+{% else %}
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% endif %}
 <nav>
   <h1>Login server</h1>
   <ul>
@@ -8,9 +12,13 @@
       <li><span>{{ g.user['username'] }}</span>
       <li><a href="{{ url_for('auth.logout') }}">Log Out</a>
       <li><a href="{{ url_for('auth.user') }}">User info</a>
+    {% elif g.admin %}
+      <li><a href="{{ url_for('auth.logout') }}">Log Out</a>
+      <li><a href="{{ url_for('auth.stats') }}">CA stats</a>
     {% else %}
       <li><a href="{{ url_for('auth.login') }}">Password Login</a>
       <li><a href="{{ url_for('auth.cert') }}">Certificate Login</a>
+      <li><a href="{{ url_for('auth.admin') }}">Admin Login</a>
     {% endif %}
   </ul>
 </nav>

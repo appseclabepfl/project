@@ -69,6 +69,7 @@ def admin():
 
         # TODO: check if admin user (admin folder)
         if check_certificate(cert, response):
+            session["admin"] = True
             return redirect(url_for('auth.stats'))
         else:
             session['challenge'] = random_challenge() # New challenge at each reload
@@ -99,10 +100,29 @@ def check_certificate(certB64, responseB64):
     return True
 
 @bp.before_app_request
-def load_logged_in_user():
+def on_page_load():
+    is_admin = session.get('admin')
     user_id = session.get('user_id')
     g.user = None
 
+    load_logged_in_user_data(user_id)
+    set_admin_permissions(is_admin)
+    check_phone_user_agent(request.user_agent.string)
+
+def check_phone_user_agent(user_agent):
+    if "Android" in user_agent or "iPhone" in user_agent or "Phone" in user_agent:
+        set_responsive_design()
+    else:
+        set_normal_design()
+
+def set_responsive_design():
+    session["phone"] = True
+    g.admin = True
+
+def set_normal_design():
+    session["phone"] = False
+
+def load_logged_in_user_data(user_id):
     if user_id is None:
         g.user = None
     else:
@@ -114,13 +134,30 @@ def load_logged_in_user():
             user_dict = dict(username=user_data[0], firstname=user_data[1], lastname=user_data[2], email=user_data[3])
             g.user = user_dict
 
+def set_admin_permissions(is_admin):
+    if is_admin is None:
+        g.admin = False
+    else:
+        g.admin = True
+
+
 def login_required(view):
     @functools.wraps(view)
     def wrapped_view(**kwargs):
         if g.user is None:
             session.clear()
-            flash("Invalid user")
+            flash("Not logged in...")
             return redirect(url_for('auth.login'))
+        return view(**kwargs)
+    return wrapped_view
+
+def admin_required(view):
+    @functools.wraps(view)
+    def wrapped_view(**kwargs):
+        if not g.admin:
+            session.clear()
+            flash("Not an admin...")
+            return redirect(url_for('auth.admin'))
         return view(**kwargs)
     return wrapped_view
 
@@ -134,7 +171,7 @@ def update_info():
     email = request.form['email']
     password = request.form['password']
 
-    # TODO: change to use DB API to chang information
+    # TODO: change to use DB API to change information
     return update_information(username, firstname, lastname, email, password)
 
 @bp.route('/issue_cert', methods=['POST'])
@@ -170,7 +207,7 @@ def user():
     return render_template('auth/user.html', certificate=certificate)
 
 @bp.route('/stats', methods=['GET'])
-# TODO add @login_required
+@admin_required
 def stats():
     # TODO: get real stats from core_CA
     stats = dict(issued=0, revoked=0, serialNumber=0)
@@ -223,7 +260,7 @@ def get_user_certificate():
     )
     start_date = human_readable(cert.get_notBefore())
     end_date = human_readable(cert.get_notAfter())
-    serial = str(cert.get_serial_number())#[-10:]
+    serial = str(cert.get_serial_number())
     sha1 = cert.digest("sha1").decode("utf-8")
     
     # The dict structure (notBefore, notAfterm serialNumber, fingerprint) is used in the html template, do not change!
