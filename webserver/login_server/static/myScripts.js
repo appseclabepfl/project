@@ -6,6 +6,10 @@ function computeResponse(obj){
   
   // Read from file input
   var file = document.getElementById('file').files[0];
+
+  checkFileExtension(document.getElementById('file'))
+
+  document.getElementById('file').value = ''; // remove PKCS#12 from input field
   var reader = new FileReader();
   
   reader.onload = function(e) {               
@@ -17,18 +21,62 @@ function computeResponse(obj){
     var pkcs12 = forge.pkcs12.pkcs12FromAsn1(pkcs12Asn1,);
 
     // extract private key
-    var privateKey = get_private_key(pkcs12);
+    var values = get_private_key(pkcs12);
+    var privateKey = values[0];
 
-    // Convert to PKCS8 format
+    // extract certificate and put it in the form
+    var cert = values[1];
+    var certificateB64 = encodeCertificate(cert);
+    document.getElementById('certificate').value = certificateB64;
+
+    // Convert private key to PKCS8 format
     var privateKeyPkcs8 = _privateKeyToPkcs8(privateKey);
 
-    // Import into WebCrypto
+    // Import key into WebCrypto
     _importCryptoKeyPkcs8(privateKeyPkcs8, false).    
         then(function(cryptoKey) {
           sign_content(cryptoKey, challenge.toString());
         });
   }
   reader.readAsArrayBuffer(file);
+}
+
+// https://stackoverflow.com/a/4237161
+function checkFileExtension(oInput) {
+  var _validFileExtensions = [".p12"];    
+
+  if (oInput.type == "file") {
+    var sFileName = oInput.value;
+    if (sFileName.length > 0) {
+      var blnValid = false;
+      for (var j = 0; j < _validFileExtensions.length; j++) {
+          var sCurExtension = _validFileExtensions[j];
+          if (sFileName.substr(sFileName.length - sCurExtension.length, sCurExtension.length).toLowerCase() == sCurExtension.toLowerCase()) {
+              blnValid = true;
+              break;
+          }
+      }
+      
+      if (!blnValid) {
+          alert(sFileName + " is invalid, allowed extensions are: " + _validFileExtensions.join(", "));
+          return false;
+      }
+    } else {
+      alert("Please select your certificate...")
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// https://gist.github.com/RevenueGitHubAdmin/c7191d975599e381c45f21782305d06d
+function encodeCertificate(certificate) {
+  return forge.util.encode64(
+      forge.asn1.toDer(
+          forge.pki.certificateToAsn1(certificate)
+      ).getBytes()
+  );
 }
 
 function sign_content(privateKey, content) {
@@ -91,11 +139,11 @@ function get_private_key(pkcs12){
             // found encrypted private key
             privateKey = safeBag.key;
         } else if(safeBag.type === forge.pki.oids.certBag) {
-            // this bag has a certificate...        
+            cert = safeBag.cert 
         }   
     }
   }
-  return privateKey
+  return [privateKey, cert]
 }
 
 function arrayBufferToString( buffer ) {

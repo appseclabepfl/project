@@ -47,24 +47,16 @@ def cert():
     if request.method == 'GET':
         session['challenge'] = random_challenge()
         return render_template('auth/cert.html', challenge=session['challenge'])
-    if request.method == 'POST':
-        if 'file' in request.files:
-            file = request.files['file']
-            if file and file.filename != '' and allowed_file(file.filename):
-                response = request.form['challenge']
-                #print(f"Answering to challenge {session['challenge']}")
-                if check_certificate(file.read(), response):
-                    return redirect(url_for('auth.user'))
-                else:
-                    session['challenge'] = random_challenge() # New challenge at each reload
-                    return render_template('auth/cert.html', challenge=session['challenge'])
-            else:
-                flash("Invalid file format")
-                return render_template('auth/cert.html', challenge=session['challenge'])
+    elif request.method == 'POST':
+        response = request.form['challenge']
+        cert = request.form['certificate']
+
+        if check_certificate(cert, response):
+            return redirect(url_for('auth.user'))
         else:
-            flash('Please select a file...')
+            session['challenge'] = random_challenge() # New challenge at each reload
+            flash("Invalid certificate")
             return render_template('auth/cert.html', challenge=session['challenge'])
-    return render_template('auth/cert.html', challenge=session['challenge'])
 
 def extract_uid(cert):
     for name, value in cert.get_subject().get_components():
@@ -72,13 +64,13 @@ def extract_uid(cert):
             return value.decode("utf-8")
     return "UNKNOWN_USER"
 
-def check_certificate(bytestring, response):
+def check_certificate(certB64, responseB64):
     #TODO Check if cert in CRL (+ notBefore and notAfter dates?) 
-    p12 = crypto.load_pkcs12(bytestring)
-    cert = p12.get_certificate()
-    #key = p12.get_privatekey()
 
-    signature = base64.b64decode(response.encode("utf-8"))
+    cert_bytes = base64.b64decode(certB64.encode("utf-8"))
+    cert = crypto.load_certificate(crypto.FILETYPE_ASN1, cert_bytes)
+    signature = base64.b64decode(responseB64.encode("utf-8"))
+    
     try:
         crypto.verify(cert, signature, str(session["challenge"]), "sha256")
     except crypto.Error: # invalid signature
