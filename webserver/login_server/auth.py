@@ -144,6 +144,7 @@ def issue_cert():
 
     if check_password(password):
         # TODO send certificate issuing request to coreCA
+        # + revoke current certificate if there is one
         # And return real certificate instead of placeholder
         return send_file("cert/client.crt", as_attachment=True)
     else:
