@@ -1,10 +1,11 @@
 import functools
 import hashlib
-import OpenSSL.crypto
+from  OpenSSL import crypto
 from datetime import datetime
 from flask import send_file
 import os
 import struct
+import base64
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
@@ -33,7 +34,6 @@ def login():
             return redirect(url_for('auth.user'))
 
         flash(error)
-
     return render_template('auth/login.html')
 
 ALLOWED_EXTENSIONS = {'p12'}
@@ -53,10 +53,11 @@ def cert():
             if file and file.filename != '' and allowed_file(file.filename):
                 response = request.form['challenge']
                 #print(f"Answering to challenge {session['challenge']}")
-                check_certificate(file.read(), response)
-                #TODO: if ok -> login
-                session['challenge'] = random_challenge() # New challenge at each reload
-                return render_template('auth/cert.html', challenge=session['challenge'])
+                if check_certificate(file.read(), response):
+                    return redirect(url_for('auth.user'))
+                else:
+                    session['challenge'] = random_challenge() # New challenge at each reload
+                    return render_template('auth/cert.html', challenge=session['challenge'])
             else:
                 flash("Invalid file format")
                 return render_template('auth/cert.html', challenge=session['challenge'])
@@ -65,13 +66,33 @@ def cert():
             return render_template('auth/cert.html', challenge=session['challenge'])
     return render_template('auth/cert.html', challenge=session['challenge'])
 
+def extract_uid(cert):
+    for name, value in cert.get_subject().get_components():
+        if name.decode("utf-8") == "UID":
+            return value.decode("utf-8")
+    return "UNKNOWN_USER"
+
 def check_certificate(bytestring, response):
-    #TODO check response + certificate validity
-    flash(f"Challenge Response {response}")
+    #TODO Check if cert in CRL (+ notBefore and notAfter dates?) 
+    p12 = crypto.load_pkcs12(bytestring)
+    cert = p12.get_certificate()
+    #key = p12.get_privatekey()
+
+    signature = base64.b64decode(response.encode("utf-8"))
+    try:
+        crypto.verify(cert, signature, str(session["challenge"]), "sha256")
+    except crypto.Error: # invalid signature
+        return False
+    
+    # Set user_id for the login session
+    session.clear()
+    session['user_id'] = extract_uid(cert)
+    return True
 
 @bp.before_app_request
 def load_logged_in_user():
     user_id = session.get('user_id')
+    g.user = None
 
     if user_id is None:
         g.user = None
@@ -88,6 +109,8 @@ def login_required(view):
     @functools.wraps(view)
     def wrapped_view(**kwargs):
         if g.user is None:
+            session.clear()
+            flash("Invalid user")
             return redirect(url_for('auth.login'))
         return view(**kwargs)
     return wrapped_view
@@ -177,8 +200,8 @@ def get_user_certificate():
     #TODO: get real cert from coreCA
 
     # PLACEHOLDER CERTIFICATE
-    cert = OpenSSL.crypto.load_certificate(
-        OpenSSL.crypto.FILETYPE_PEM, 
+    cert = crypto.load_certificate(
+        crypto.FILETYPE_PEM, 
         open('cert/client.crt').read()
     )
     start_date = human_readable(cert.get_notBefore())

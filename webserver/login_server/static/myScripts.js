@@ -25,17 +25,15 @@ function computeResponse(obj){
     // Import into WebCrypto
     _importCryptoKeyPkcs8(privateKeyPkcs8, false).    
         then(function(cryptoKey) {
-          sign_content(cryptoKey, challenge);
+          sign_content(cryptoKey, challenge.toString());
         });
   }
   reader.readAsArrayBuffer(file);
 }
 
 function sign_content(privateKey, content) {
-  console.log("in sign");
-  var digestToSign = forge.util.decode64(content);
-  var digestToSignBuf = stringToArrayBuffer(digestToSign);
-  console.log("after digest");
+  //var digestToSign = forge.util.decode64(content);
+  var digestToSignBuf = stringToArrayBuffer(content);
 
   crypto.subtle.sign(
             {name: "RSASSA-PKCS1-v1_5"},
