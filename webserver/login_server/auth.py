@@ -58,6 +58,23 @@ def cert():
             flash("Invalid certificate")
             return render_template('auth/cert.html', challenge=session['challenge'])
 
+@bp.route('/admin', methods=('GET', 'POST'))
+def admin():
+    if request.method == 'GET':
+        session['challenge'] = random_challenge()
+        return render_template('auth/admin.html', challenge=session['challenge'])
+    elif request.method == 'POST':
+        response = request.form['challenge']
+        cert = request.form['certificate']
+
+        # TODO: check if admin user (admin folder)
+        if check_certificate(cert, response):
+            return redirect(url_for('auth.stats'))
+        else:
+            session['challenge'] = random_challenge() # New challenge at each reload
+            flash("Invalid certificate")
+            return render_template('auth/admin.html', challenge=session['challenge'])
+
 def extract_uid(cert):
     for name, value in cert.get_subject().get_components():
         if name.decode("utf-8") == "UID":
@@ -70,7 +87,7 @@ def check_certificate(certB64, responseB64):
     cert_bytes = base64.b64decode(certB64.encode("utf-8"))
     cert = crypto.load_certificate(crypto.FILETYPE_ASN1, cert_bytes)
     signature = base64.b64decode(responseB64.encode("utf-8"))
-    
+
     try:
         crypto.verify(cert, signature, str(session["challenge"]), "sha256")
     except crypto.Error: # invalid signature
@@ -150,6 +167,13 @@ def revoke_cert():
 def user():
     certificate = get_user_certificate()
     return render_template('auth/user.html', certificate=certificate)
+
+@bp.route('/stats', methods=['GET'])
+# TODO add @login_required
+def stats():
+    # TODO: get real stats from core_CA
+    stats = dict(issued=0, revoked=0, serialNumber=0)
+    return render_template('auth/stats.html', ca_info=stats)
 
 @bp.route('/logout')
 def logout():
