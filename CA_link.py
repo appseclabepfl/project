@@ -26,7 +26,8 @@ context.verify_mode = ssl.CERT_REQUIRED
 
     
 CA_IP = '10.10.10.3'
-CA_PORT = 6000
+CA_PORT1 = 6000
+CA_PORT2 = 6000
 
 BUFFER_SIZE = 1024
 
@@ -46,7 +47,11 @@ def getNewCert(savePath, userInfo):   #TODO what information should we give to t
             ssock.settimeout(0.3)
 
             try:
-                ssock.connect((CA_IP, CA_PORT))
+                ssock.connect((CA_IP, CA_PORT1))
+            except:
+                ssock.connect((CA_IP, CA_PORT2))
+            
+            try:
 
                 #send instruction
                 ssock.send(NEW_CERT.encode())
