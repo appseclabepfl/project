@@ -34,9 +34,11 @@ CERTS = HOME_DIR+"certificates"
 KEYS = HOME_DIR+"keys"
 DATA = HOME_DIR+"data"
 TLS_KEY = HOME_DIR+"CA_TLS_pk.key"
-LOG = HOME_DIR+"my_log_test.txt"
+LOGAUTH = "/var/log/auth.log"
+LOGWTMP =  "/var/log/wtmp"
+LOGLASTLOG = "/var/log/lastlog"
 
-PATHS = [CERTS, KEYS, DATA, TLS_KEY, LOG]
+PATHS = [CERTS, KEYS, DATA, TLS_KEY, LOGAUTH, LOGLASTLOG, LOGWTMP]
 
 
 #Private Key Path
@@ -53,10 +55,6 @@ class Handler(FileSystemEventHandler):
 
         if event.is_directory:
             return None
-
-        elif event.event_type == 'created':
-            # Take any action here when a file is first created.
-            launch_backup(basename(event.src_path), event.src_path)
 
         elif event.event_type == 'modified':
             # Taken any action here when a file is modified.
@@ -108,7 +106,7 @@ class WatcherThread(Thread):
 # return true if it is sensible data
 def isSensible(name):
 
-    if (".key" in name or ".pem" in name):  #TODO: do better
+    if (".key" in name or "private" in name):
         return True
     
     return False
