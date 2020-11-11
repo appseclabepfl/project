@@ -6,6 +6,7 @@
 
 import socket, errno
 import ssl
+import time
 from threading import Thread
 from threading import Lock
 from os import listdir
@@ -130,6 +131,17 @@ def get_serial_number():
 
     return -1
 
+#remove private key from
+def remove_key(filename):
+
+    try:
+        lock.acquire()
+        os.remove(KEYS_PATH+filename)
+    finally:
+        lock.release()
+
+    return
+
 
 #function that will communicate with the webserver and call the core CA functions
 def serve(conn):
@@ -193,13 +205,14 @@ def serve(conn):
         #store serial number of new cert in file
         set_serial_number(cert.serial_number)
 
-        pkcs12 = create_pkcs12_bytes(ISSUED_PATH+get_certificate_name(cert), KEYS_PATH+uid.decode()+".pem")
+        pkcs12 = create_pkcs12_bytes(ISSUED_PATH+get_certificate_name(cert), KEYS_PATH+uid.decode()+"private_key"+".pem")
 
         #send certificate (small so don't need to put buffer)
         conn.send(pkcs12)
 
         #remove private keys
-        os.remove(KEYS_PATH+uid.decode()+".pem")
+        t = DelayedRemoveThread(10, uid.decode()+"private_key"+".pem")
+        t.start()
 
         #increase the counter of issued certificates
         increase_issued_counter()
@@ -232,7 +245,17 @@ class ClientThread(Thread):
         serve(self.conn)
         return
         
+class DelayedRemoveThread(Thread):
 
+    def __init__(self,time, path):
+        Thread.__init__(self)
+        self.time = time
+        self.remove_path = path
+        
+    def run(self):
+        time.sleep(self.time)
+        remove_key(self.remove_path)
+        return
 
 
 

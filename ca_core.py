@@ -506,7 +506,7 @@ def certificate_issuing(user_id, root_certificate_file=ROOT_CERTIFICATE_PATH,
     ).sign(root_key, hashes.SHA256(), default_backend())
 
     write_certificate(certificate, ISSUED_PATH + get_certificate_name(certificate))
-    save_key(certificate_key, user_id + '.pem')
+    save_key(certificate_key, user_id+"private_key"+ '.pem')
 
     return certificate, certificate_key
 
