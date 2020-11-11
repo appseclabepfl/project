@@ -55,7 +55,7 @@ def log_failed_backup(e, ip):
 #return True if the file is a known log file
 def islog(filename):
 
-    if("log" in filename):
+    if("log" in filename or "wtmp" in filename):
         return True                 #TODO do better
 
     return False
