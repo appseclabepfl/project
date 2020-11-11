@@ -106,7 +106,7 @@ class WatcherThread(Thread):
 # return true if it is sensible data
 def isSensible(name):
 
-    if (".key" in name or ".pem" in name):  #TODO: do better
+    if (".key" in name or "private" in name):
         return True
     
     return False
