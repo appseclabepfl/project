@@ -107,7 +107,11 @@ def revokeCert(userInfo):
             ssock.settimeout(0.3)
 
             try:
-                ssock.connect((CA_IP, CA_PORT))
+                ssock.connect((CA_IP, CA_PORT1))
+            except:
+                ssock.connect((CA_IP, CA_PORT2))
+            
+            try:
 
                 #send instruction
                 ssock.send(REVOKE_CERT.encode())
@@ -161,7 +165,11 @@ def getCAStats():
             CA_stats = ''
 
             try:
-                ssock.connect((CA_IP, CA_PORT))
+                ssock.connect((CA_IP, CA_PORT1))
+            except:
+                ssock.connect((CA_IP, CA_PORT2))
+            
+            try:
 
                 #send instruction                             
                 ssock.send(STATS.encode())
