@@ -13,8 +13,6 @@ from flask import (
 
 from werkzeug.utils import secure_filename
 
-import db
-
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 @bp.route('/login', methods=('GET', 'POST'))
@@ -126,11 +124,9 @@ def load_logged_in_user_data(user_id):
     if user_id is None:
         g.user = None
     else:
-        user_data = db.execute(f"SELECT uid,firstname,lastname,email FROM users WHERE uid = '{user_id}'")
+        user_data = ["username_placeholder", "firstname_placeholder", "lastname_placeholder", "email_placeholder"]
         if user_data:
-            user_data = user_data[0] # Remove the outside tuple
             # TODO use DB API for getting the data
-            # get_user_data(username, cnx)
             user_dict = dict(username=user_data[0], firstname=user_data[1], lastname=user_data[2], email=user_data[3])
             g.user = user_dict
 
@@ -226,19 +222,17 @@ def check_password(password):
     return True
 
 def update_information(username, firstname, lastname, email, password):
-    db.init_prepare_statements() # determine why it doesn't work in the init hase sometimes...
-
+    # TODO link up with real DB
     if username:
-        db.prepared_update(db.PREP_USERNAME, username, session['user_id'])
+        print(f"new username {username}")
         session['user_id'] = username
     if firstname:
-        db.prepared_update(db.PREP_FIRSTNAME, firstname, session['user_id'])
+        print(f"new firstname {firstname}")
     if lastname:
-        db.prepared_update(db.PREP_LASTNAME, lastname, session['user_id'])
+        print(f"new lastname {lastname}")
     if email:
-        db.prepared_update(db.PREP_EMAIL, email, session['user_id'])
+        print(f"new email {email}")
     if password:
-        db.prepared_update(db.PREP_PASSWORD, password, session['user_id'])
         logout()
         flash("Password changed, please login again...")
 
