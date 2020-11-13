@@ -6,9 +6,12 @@
 
 import socket, errno
 import ssl
+import time
+from datetime import datetime
+from threading import Timer
 from threading import Thread
 from threading import Lock
-from os import listdir
+from os import listdir, _exit
 from os.path import isfile, join
 from ca_core import *
 from tools import *
@@ -225,6 +228,9 @@ def serve(conn):
 
 
 
+def exitfunc():
+    os._exit(0)
+
 class ClientThread(Thread):
 
     def __init__(self,connection):
@@ -304,7 +310,7 @@ except socket.error as e:
 sock.listen(5)             
 
 #ssock = context.wrap_socket(sock, server_side=True)
-
+Timer(3600, exitfunc).start()
 
 while True:
 
