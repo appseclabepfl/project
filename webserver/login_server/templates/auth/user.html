@@ -8,7 +8,7 @@
   <h2>Update Information</h2>
   <form action="{{ url_for('auth.update_info') }}" method="post">
     <label for="username">Firstname</label>
-    <input name="username" id="username" placeholder="{{g.user['username']}}">
+    <input name="username" id="username" placeholder="{{g.user['uid']}}">
     <label for="firstname">Firstname</label>
     <input name="firstname" id="firstname" placeholder="{{g.user['firstname']}}">
     <label for="lastname">Lastname</label>

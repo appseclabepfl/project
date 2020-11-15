@@ -23,8 +23,8 @@ def login():
         password = request.form['password'].encode('utf-8')
 
         error = None
-        # TODO save context cnxt = db_API.init()
-        if not check_password(password):
+
+        if True:
 #        if not db_API.check_password(username, password, context):
             error = 'Invalid login.'
 
@@ -98,10 +98,14 @@ def on_page_load():
     is_admin = session.get('admin')
     user_id = session.get('user_id')
     g.user = None
-
+    permanent_db_context()
     load_logged_in_user_data(user_id)
     set_admin_permissions(is_admin)
     check_phone_user_agent(request.user_agent.string)
+
+def permanent_db_context():
+    if not hasattr(g, 'db_context'):
+        g.db_context = db_API.init()
 
 def check_phone_user_agent(user_agent):
     if "Android" in user_agent or "iPhone" in user_agent or "Phone" in user_agent:
@@ -120,11 +124,10 @@ def load_logged_in_user_data(user_id):
     if user_id is None:
         g.user = None
     else:
-        user_data = ["username_placeholder", "firstname_placeholder", "lastname_placeholder", "email_placeholder"]
-        if user_data:
-            # TODO use DB API for getting the data
-            user_dict = dict(username=user_data[0], firstname=user_data[1], lastname=user_data[2], email=user_data[3])
-            g.user = user_dict
+        user_data = db_API.get_user_data(user_id, g.db_context)
+        #user_data = dict(uid="username_placeholder", firstname="firstname_placeholder", lastname="lastname_placeholder", email="email_placeholder")
+        if user_data is not None: #if uid not in DB
+            g.user = user_data
 
 def set_admin_permissions(is_admin):
     if is_admin is None:
@@ -163,7 +166,6 @@ def update_info():
     email = request.form['email']
     password = request.form['password']
 
-    # TODO: change to use DB API to change information
     return update_information(username, firstname, lastname, email, password)
 
 @bp.route('/issue_cert', methods=['POST'])
@@ -210,31 +212,43 @@ def logout():
     session.clear()
     return redirect(url_for('auth.login'))
 
+def update_information(uid, firstname, lastname, email, password):
+    new_data = {}
 
-
-def check_password(password):
-    #TODO link up with Database API
-    # check_password(username_password, cnx)
-    return True
-
-def update_information(username, firstname, lastname, email, password):
-    # TODO link up with real DB
-    if username:
-        print(f"new username {username}")
-        session['user_id'] = username
+    if uid:
+        new_data['uid'] = uid
+        print(f"new uid {uid}")
+        session['user_id'] = uid
+    else:
+        new_data['uid'] = session['user_id'] 
     if firstname:
+        new_data['firstname'] = firstname
         print(f"new firstname {firstname}")
+    else:
+        new_data['firstname'] = g.user['firstname']
     if lastname:
+        new_data['lastname'] = lastname
         print(f"new lastname {lastname}")
+    else:
+        new_data['lastname'] = g.user['lastname']
     if email:
+        new_data['email'] = email
         print(f"new email {email}")
+    else:
+        new_data['email'] = g.user['email']
     if password:
+        new_data['pwd'] = password
         logout()
         flash("Password changed, please login again...")
+    else:
+        new_data['pwd'] = ""
 
-    # If there were modifications, inform the user and refresh page        
+    # Update in DB
+    db_API.update_user_data(new_data, g.db_context)
+
     if firstname or lastname or email:
         flash("Information updated")
+
     return redirect(url_for('auth.user'))
 
 def human_readable(date_bytes):

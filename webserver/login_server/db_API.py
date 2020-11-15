@@ -41,7 +41,7 @@ def get_user_data(uid, context):
 	data = json.loads(ssock.recv(BUFFER_SIZE))
 	ssock.close()
 	if data.get("error_msg") is not None: #If non-existent user
-		return False
+		return None
 	return data
 
 def update_user_data(data, context):
