@@ -6,6 +6,7 @@ from flask import send_file
 import os
 import struct
 import base64
+import db_API
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
@@ -22,8 +23,9 @@ def login():
         password = request.form['password'].encode('utf-8')
 
         error = None
-
+        # TODO save context cnxt = db_API.init()
         if not check_password(password):
+#        if not db_API.check_password(username, password, context):
             error = 'Invalid login.'
 
         if error is None:
@@ -33,12 +35,6 @@ def login():
 
         flash(error)
     return render_template('auth/login.html')
-
-ALLOWED_EXTENSIONS = {'p12'}
-
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @bp.route('/cert', methods=('GET', 'POST'))
 def cert():
@@ -250,7 +246,7 @@ def get_user_certificate():
     # PLACEHOLDER CERTIFICATE
     cert = crypto.load_certificate(
         crypto.FILETYPE_PEM, 
-        open('cert/server.crt').read()
+        open('cert/rootCA.crt').read()
     )
     start_date = human_readable(cert.get_notBefore())
     end_date = human_readable(cert.get_notAfter())

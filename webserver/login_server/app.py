@@ -1,7 +1,6 @@
 import os
 
 from flask import Flask
-from flask_mysqldb import MySQL
 from flask import jsonify
 
 import auth
@@ -27,6 +26,6 @@ app.register_blueprint(auth.bp)
 
 if __name__ == "__main__":
     context = ssl_cert.setup()
-    app.run(host='127.0.0.1', port='5000', ssl_context=context)
+    app.run(host='10.10.20.2', port='5000', ssl_context=context)
 
     
