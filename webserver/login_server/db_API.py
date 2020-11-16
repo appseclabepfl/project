@@ -29,24 +29,26 @@ def get_new_socket_for(query, context):
 	return ssock
 
 def check_password(uid, pwd, context):
+	separator = ":".encode('utf-8')
 	ssock = get_new_socket_for(CHECK_PASSWORD, context)
-	ssock.send(base64.b64encode(uid+":"+pwd).encode())
+	ssock.send(base64.b64encode(uid+separator+pwd))
 	sucess = ssock.recv(BUFFER_SIZE).decode()
 	ssock.close()
-	return sucess == 1
+	#TODO: non-existent user in DB?
+	return sucess == "0"
 
 def get_user_data(uid, context):
 	ssock = get_new_socket_for(GET_USER_DATA, context)
-	ssock.send(base64.b64encode(uid).encode())
+	ssock.send(base64.b64encode(uid))
 	data = json.loads(ssock.recv(BUFFER_SIZE))
 	ssock.close()
-	if data.get("error_msg") is not None: #If non-existent user
+	if data.get("error_msg") is not "": #If non-existent user
 		return None
 	return data
 
 def update_user_data(data, context):
 	ssock = get_new_socket_for(UPDATE_USER_DATA, context)
-	ssock.send(json.dumps(data).encode())
+	ssock.send(json.dumps(data).encode('utf-8'))
 	print("Response to update", ssock.recv(BUFFER_SIZE).decode())
 	ssock.close()
 	return

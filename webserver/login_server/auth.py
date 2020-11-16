@@ -19,13 +19,13 @@ bp = Blueprint('auth', __name__, url_prefix='/auth')
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
     if request.method == 'POST':
-        username = request.form['username']
+        username = request.form['username'].encode('utf-8')
         password = request.form['password'].encode('utf-8')
 
         error = None
 
-        if True:
-#        if not db_API.check_password(username, password, context):
+#        if True:
+        if not db_API.check_password(username, password, g.db_context):
             error = 'Invalid login.'
 
         if error is None:
@@ -171,9 +171,10 @@ def update_info():
 @bp.route('/issue_cert', methods=['POST'])
 @login_required
 def issue_cert():
-    password = request.form['password2']
+    username = session['user_id']
+    password = request.form['password2'].encode('utf-8')
 
-    if check_password(password):
+    if db_API.check_password(username, password, g.db_context):
         # TODO send certificate issuing request to coreCA
         # + revoke current certificate if there is one
         # And return real certificate instead of placeholder
@@ -185,9 +186,10 @@ def issue_cert():
 @bp.route('/revoke_cert', methods=['POST'])
 @login_required
 def revoke_cert():
-    password = request.form['password3']
+    username = session['user_id']
+    password = request.form['password3'].encode('utf-8')
 
-    if check_password(password):
+    if db_API.check_password(username, password, g.db_context):
         # TODO send revokation request to coreCA
         flash("Certificate revoked...")
     else:
@@ -220,7 +222,7 @@ def update_information(uid, firstname, lastname, email, password):
         print(f"new uid {uid}")
         session['user_id'] = uid
     else:
-        new_data['uid'] = session['user_id'] 
+        new_data['uid'] = session['user_id'].decode('utf-8') 
     if firstname:
         new_data['firstname'] = firstname
         print(f"new firstname {firstname}")
