@@ -23,12 +23,13 @@ FIREWALL_IP = '10.10.10.1'
 PORT = 5555
 BUFFER_SIZE = 1024
 
+HOME = "/home/backupp/"
 
 #Protocol Constants
-CA_BACKUP_PATH = 'CA_backup/'
-DB_BACKUP_PATH = 'DB_backup/'
-FIREWALL_BACKUP_PATH = 'FIREWALL_backup/'
-WEBSERVER_BACKUP_PATH = 'WEBSERSER_backup/'
+CA_BACKUP_PATH = HOME+'CA_backup/'
+DB_BACKUP_PATH = HOME+'DB_backup/'
+FIREWALL_BACKUP_PATH = HOME+'FIREWALL_backup/'
+WEBSERVER_BACKUP_PATH = HOME+'WEBSERSER_backup/'
 
 #Counters and synchronization
 lock = Lock()
