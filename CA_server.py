@@ -22,15 +22,17 @@ PORT1 = 6000
 PORT2 = 6001
 BUFFER_SIZE = 1024
 
+HOME = "/home/coreca/"
+
 #CA Constants
 
-CERTIFICATES_PATH = "certificates/"
-ISSUED_PATH = "certificates/issued/"
-REVOKED_PATH = "certificates/revoked/"
-KEYS_PATH = "keys/"
+CERTIFICATES_PATH = HOME+"certificates/"
+ISSUED_PATH = HOME+"certificates/issued/"
+REVOKED_PATH = HOME+"certificates/revoked/"
+KEYS_PATH = HOME+"keys/"
 ROOT_CERTIFICATE_PATH = CERTIFICATES_PATH + 'root_certificate.pem'
 ROOT_PRIVATE_KEY_PATH = KEYS_PATH + "root_private_key.pem"
-CA_DATA_PATH = "data/"
+CA_DATA_PATH = HOME+"data/"
 ISSUED_COUNTER = CA_DATA_PATH + "issued"
 REVOKED_COUNTER = CA_DATA_PATH + "revoked"
 SERIAL_NUMBER = CA_DATA_PATH + "serialnb"
