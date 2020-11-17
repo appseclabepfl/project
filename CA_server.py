@@ -11,7 +11,6 @@ from threading import Thread
 from threading import Lock
 from os import listdir
 from os.path import isfile, join
-from datetime import datetime
 from ca_core import *
 from tools import *
 
@@ -55,8 +54,8 @@ lock = Lock()
 
 # Returns actual time and date
 def get_timestamp():
-
-    return datetime.now().strftime("%d.%m.%Y%H:%M:%S")
+    now = datetime.datetime.now()
+    return now.strftime("%d.%m.%Y%H:%M:%S")
 
 
 #Increase revoke counter using locks.
