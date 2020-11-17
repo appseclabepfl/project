@@ -11,6 +11,7 @@ from threading import Thread
 from threading import Lock
 from os import listdir
 from os.path import isfile, join
+from datetime import datetime
 from ca_core import *
 from tools import *
 
@@ -52,7 +53,10 @@ ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
 #Counters and synchronization
 lock = Lock()
 
+# Returns actual time and date
+def get_timestamp():
 
+    return datetime.now().strftime("%d.%m.%Y%H:%M:%S")
 
 
 #Increase revoke counter using locks.
@@ -343,7 +347,7 @@ while True:
 
     conn.settimeout(0.3)
 
-    print('Connection received from '+str(address))
+    print('Connection received from '+str(address)+", time and date : "+get_timestamp())
 
     if address[0] != WEBSERVER_IP:      #reject ip that are not the webserver
         conn.close()

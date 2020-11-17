@@ -34,6 +34,10 @@ WEBSERVER_BACKUP_PATH = HOME+'WEBSERSER_backup/'
 #Counters and synchronization
 lock = Lock()
 
+# Returns actual time and date
+def get_timestamp():
+
+    return datetime.now().strftime("%d.%m.%Y%H:%M:%S")
 
 #generate archive name (full path) from current time and the name of the backued up file
 def getName(folder, name):
@@ -245,7 +249,7 @@ while True:
 
     conn.settimeout(0.3)
 
-    print('Connection received from '+str(address))
+    print('Connection received from '+str(address)+", time and date: "+get_timestamp())
 
     #dispatch threads
                 
