@@ -174,13 +174,43 @@ def issue_cert():
     password = request.form['password2'].encode('utf-8')
 
     if db_API.check_password(username, password, g.db_context):
-        # TODO send certificate issuing request to coreCA
-        # + revoke current certificate if there is one
-        # And return real certificate instead of placeholder
-        return send_file("cert/server.crt", as_attachment=True)
+        new_cert = f"cert/users/{username.decode('utf-8')}.p12"
+        if not CA_API.getNewCert(new_cert, username.decode('utf-8')):
+            download = send_file(new_cert, as_attachment=True) # No problem -> download new cert
+            replacePKCSwithCert(new_cert)
+            return download
+        else: # -> problem revoke anyway and retry
+            error = CA_API.revokeCert(username.decode('utf-8'))
+            removeLocalFiles(username.decode('utf-8'))
+            error = error or CA_API.getNewCert(new_cert, username.decode('utf-8'))
+            if not error:
+                download = send_file(new_cert, as_attachment=True)
+                replacePKCSwithCert(new_cert)
+                return download
+            else:
+                flash("Failed to issue a new certificate")
     else:
         flash("Invalid password...")
         return render_template('auth/user.html')
+
+def replacePKCSwithCert(filepath):
+    new_file = filepath.replace(".p12", ".pem")
+    if os.path.exists(filepath):
+        # Save certificate to disk
+        p12 = crypto.load_pkcs12(open(filepath, 'rb').read())
+        cert = crypto.dump_certificate(crypto.FILETYPE_PEM, p12.get_certificate())
+        with open(new_file, 'wb') as f:
+            f.write(cert)
+        # Remove PKCS#12 from disk
+        os.remove(filepath)
+
+def deleteLocalFiles(uid):
+    filepath = f"cert/users/{uid}.pem"
+    if os.path.exists(filepath):
+        os.remove(filepath)
+    filepath = filepath.replace(".pem",".p12")
+    if os.path.exists(filepath):
+        os.remove(filepath)
 
 @bp.route('/revoke_cert', methods=['POST'])
 @login_required
@@ -189,8 +219,11 @@ def revoke_cert():
     password = request.form['password3'].encode('utf-8')
 
     if db_API.check_password(username, password, g.db_context):
-        # TODO send revokation request to coreCA
-        flash("Certificate revoked...")
+        if CA_API.revokeCert(username.decode('utf-8')):
+            flash("Revokation failed")
+        else:
+            deleteLocalFiles(username.decode('utf-8'))
+            flash("Certificate revoked...")
     else:
         flash("Invalid password...")
     return render_template('auth/user.html')
@@ -261,21 +294,19 @@ def human_readable(date_bytes):
     return datetime.strptime(date_bytes.decode('ascii'), '%Y%m%d%H%M%SZ')
 
 def get_user_certificate():
-    #TODO: get real cert from coreCA
+    username = session['user_id'].decode('utf-8')
+    filepath = f"cert/users/{username}.pem"
 
-    # PLACEHOLDER CERTIFICATE
-    cert = crypto.load_certificate(
-        crypto.FILETYPE_PEM, 
-        open('cert/rootCA.crt').read()
-    )
-    start_date = human_readable(cert.get_notBefore())
-    end_date = human_readable(cert.get_notAfter())
-    serial = str(cert.get_serial_number())
-    sha1 = cert.digest("sha1").decode("utf-8")
-    
-    # The dict structure (notBefore, notAfterm serialNumber, fingerprint) is used in the html template, do not change!
-    certificate = dict(notBefore=start_date, notAfter=end_date, serialNumber=serial, fingerprint=sha1)
-    return certificate
+    if os.path.exists(filepath):
+        cert = crypto.load_certificate(crypto.FILETYPE_PEM, open(filepath).read())
+        start_date = human_readable(cert.get_notBefore())
+        end_date = human_readable(cert.get_notAfter())
+        serial = str(cert.get_serial_number())
+        sha1 = cert.digest("sha1").decode("utf-8")
+        # The dict structure (notBefore, notAfterm serialNumber, fingerprint) is used in the html template, do not change!
+        return dict(notBefore=start_date, notAfter=end_date, serialNumber=serial, fingerprint=sha1)
+    else:
+        return None
 
 def random_challenge():
     # Random int from os.urandom() -> crypto secure
