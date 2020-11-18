@@ -22,15 +22,18 @@ PORT1 = 6000
 PORT2 = 6001
 BUFFER_SIZE = 1024
 
+HOME = "/home/coreca/"
+LOG_PATH = HOME+"CA_server_logs"
+
 #CA Constants
 
-CERTIFICATES_PATH = "certificates/"
-ISSUED_PATH = "certificates/issued/"
-REVOKED_PATH = "certificates/revoked/"
-KEYS_PATH = "keys/"
+CERTIFICATES_PATH = HOME+"certificates/"
+ISSUED_PATH = HOME+"certificates/issued/"
+REVOKED_PATH = HOME+"certificates/revoked/"
+KEYS_PATH = HOME+"keys/"
 ROOT_CERTIFICATE_PATH = CERTIFICATES_PATH + 'root_certificate.pem'
 ROOT_PRIVATE_KEY_PATH = KEYS_PATH + "root_private_key.pem"
-CA_DATA_PATH = "data/"
+CA_DATA_PATH = HOME+"data/"
 ISSUED_COUNTER = CA_DATA_PATH + "issued"
 REVOKED_COUNTER = CA_DATA_PATH + "revoked"
 SERIAL_NUMBER = CA_DATA_PATH + "serialnb"
@@ -50,7 +53,21 @@ ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
 #Counters and synchronization
 lock = Lock()
 
+# Returns actual time and date
+def get_timestamp():
+    now = datetime.datetime.now()
+    return now.strftime("%d.%m.%Y%H:%M:%S")
 
+
+#wrte in log that the backup failed
+def log_event(event):
+
+    f = open(LOG_PATH, 'a')
+
+    f.writelines(event+", time and date : "+get_timestamp())
+
+    f.close()
+    return
 
 
 #Increase revoke counter using locks.
@@ -149,9 +166,9 @@ def serve(conn):
     #listen for requests
     request = conn.recv(BUFFER_SIZE)
 
-    print('processing request')
+    log_event('processing request')
 
-    print(request.decode())
+    log_event(request.decode())
 
     if request.decode() == REVOKE_CERT:      #lauch revocation process
 
@@ -178,12 +195,12 @@ def serve(conn):
                 data = f.read(BUFFER_SIZE)
 
             f.close()
-            print("crl sent !")
+            log_event("crl sent !")
 
 
         except Exception as e:
             print(e.with_traceback())
-            print("Failed to revoke certificate")
+            log_event("Failed to revoke certificate")
 
 
     elif request.decode() == NEW_CERT:       #launch creation of new certificate
@@ -341,7 +358,7 @@ while True:
 
     conn.settimeout(0.3)
 
-    print('Connection received from '+str(address))
+    log_event('Connection received from '+str(address)+", time and date : "+get_timestamp())
 
     if address[0] != WEBSERVER_IP:      #reject ip that are not the webserver
         conn.close()
@@ -352,5 +369,5 @@ while True:
             t = ClientThread(conn)
             t.start()
         except:
-            print('Error when processing request')
+            log_event('Error when processing request')
 

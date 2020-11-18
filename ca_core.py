@@ -17,19 +17,21 @@ from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from OpenSSL.crypto import *
 
-CERTIFICATES_PATH = "certificates/"
+HOME = "/home/coreca/"
+
+CERTIFICATES_PATH = HOME+"certificates/"
 if not os.path.exists(CERTIFICATES_PATH):
     os.makedirs(CERTIFICATES_PATH)
 
-ISSUED_PATH = "certificates/issued/"
+ISSUED_PATH = HOME+"certificates/issued/"
 if not os.path.exists(ISSUED_PATH):
     os.makedirs(ISSUED_PATH)
 
-REVOKED_PATH = "certificates/revoked/"
+REVOKED_PATH = HOME+"certificates/revoked/"
 if not os.path.exists(REVOKED_PATH):
     os.makedirs(REVOKED_PATH)
 
-KEYS_PATH = "keys/"
+KEYS_PATH = HOME+"keys/"
 if not os.path.exists(KEYS_PATH):
     os.makedirs(KEYS_PATH)
 

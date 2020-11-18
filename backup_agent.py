@@ -37,8 +37,10 @@ TLS_KEY = HOME_DIR+"CA_TLS_pk.key"
 LOGAUTH = "/var/log/auth.log"
 LOGWTMP =  "/var/log/wtmp"
 LOGLASTLOG = "/var/log/lastlog"
+CODE = HOME_DIR+"CA_server.py"
+CALOGS = HOME_DIR+"CA_server_logs"
 
-PATHS = [CERTS, KEYS, DATA, TLS_KEY, LOGAUTH, LOGLASTLOG, LOGWTMP]
+PATHS = [CERTS, KEYS, DATA, TLS_KEY, LOGAUTH, LOGLASTLOG, LOGWTMP, CODE,CALOGS]
 
 
 #Private Key Path
