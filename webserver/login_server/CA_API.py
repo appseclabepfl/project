@@ -19,8 +19,8 @@ ALREADY_ISSUED_ERROR = 'ALREADY_ISSUED'
 
 context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
 context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
-context.load_cert_chain('/home/webserver/webserver_certificate.pem', '/home/webserver/webserver_TLS_pk.key')       #Path to certificates for TLS comunication
-context.load_verify_locations('/home/webserver/rootCA.crt')      #path to certificate for TLS 
+context.load_cert_chain('cert/webserver_certificate.pem', 'cert/webserver_TLS_pk.key')       #Path to certificates for TLS comunication
+context.load_verify_locations('cert/rootCA.crt')      #path to certificate for TLS 
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 context.verify_mode = ssl.CERT_REQUIRED
 
@@ -32,7 +32,7 @@ BUFFER_SIZE = 1024
 
 #PATHS
 
-CRL_PATH = "/home/webserver/crl.pem"
+CRL_PATH = "cert/crl.pem"
 
 
 

@@ -8,6 +8,8 @@ import struct
 import base64
 import db_API
 import CA_API
+import re
+from json.decoder import JSONDecodeError
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
@@ -73,21 +75,52 @@ def admin():
 def extract_uid(cert):
     for name, value in cert.get_subject().get_components():
         if name.decode("utf-8") == "UID":
-            return value.decode("utf-8")
-    return "UNKNOWN_USER"
+            return value
+    return "UNKNOWN_USER".encode('utf-8')
+
+def is_revoked_in_crl(certificate):
+    f = open("cert/crl.pem")
+    crl = crypto.load_crl(crypto.FILETYPE_PEM, f.read())
+    f.close()
+
+    revokations = crl.get_revoked()
+    for revok in revokations:
+        revok_serial = int(revok.get_serial().decode('ASCII'), 16) #It is a hex nb encoded in ASCII
+        cert_serial = certificate.get_serial_number() #It is an int
+        if revok_serial == cert_serial:
+            return True
+    return False
+
+
+def is_valid_trust_chain(certificate):
+    f = open("cert/rootCA.crt")
+    root_cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
+    f.close()
+    store = crypto.X509Store()
+    store.add_cert(root_cert)
+    store_ctx = crypto.X509StoreContext(store, certificate)
+    return store_ctx.verify_certificate() == None
 
 def check_certificate(certB64, responseB64):
-    #TODO Check if cert in CRL (+ notBefore and notAfter dates?) 
-
     cert_bytes = base64.b64decode(certB64.encode("utf-8"))
     cert = crypto.load_certificate(crypto.FILETYPE_ASN1, cert_bytes)
+
+     # Check signature is valid
     signature = base64.b64decode(responseB64.encode("utf-8"))
 
     try:
         crypto.verify(cert, signature, str(session["challenge"]), "sha256")
     except crypto.Error: # invalid signature
         return False
-    
+
+    # Check CRL
+    if is_revoked_in_crl(cert):
+        return False
+
+    # Check chain of trust
+    if not is_valid_trust_chain(cert):
+        return False
+
     # Set user_id for the login session
     session.clear()
     session['user_id'] = extract_uid(cert)
@@ -124,7 +157,10 @@ def load_logged_in_user_data(user_id):
     if user_id is None:
         g.user = None
     else:
-        user_data = db_API.get_user_data(user_id, g.db_context)
+        try:
+            user_data = db_API.get_user_data(user_id, g.db_context)
+        except JSONDecodeError:
+            user_data = None
         if user_data is not None: #if uid not in DB
             g.user = user_data
 
