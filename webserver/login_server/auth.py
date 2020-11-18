@@ -7,6 +7,7 @@ import os
 import struct
 import base64
 import db_API
+import CA_API
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
@@ -24,7 +25,6 @@ def login():
 
         error = None
 
-#        if True:
         if not db_API.check_password(username, password, g.db_context):
             error = 'Invalid login.'
 
@@ -125,7 +125,6 @@ def load_logged_in_user_data(user_id):
         g.user = None
     else:
         user_data = db_API.get_user_data(user_id, g.db_context)
-        #user_data = dict(uid="username_placeholder", firstname="firstname_placeholder", lastname="lastname_placeholder", email="email_placeholder")
         if user_data is not None: #if uid not in DB
             g.user = user_data
 
@@ -205,8 +204,13 @@ def user():
 @bp.route('/stats', methods=['GET'])
 @admin_required
 def stats():
-    # TODO: get real stats from core_CA
-    stats = dict(issued=0, revoked=0, serialNumber=0)
+    raw_stats = CA_API.getCAStats()
+    splitted = raw_stats.split(",")
+    print(splitted)
+    stat_issued = splitted[0].replace("ISSUED CERTS: ", "")
+    stat_revoked = splitted[1].replace("REVOKED CERTS: ", "")
+    stat_serial = splitted[2].replace("SERIAL NUMBER: ", "")
+    stats = dict(issued=stat_issued, revoked=stat_revoked, serialNumber=stat_serial)
     return render_template('auth/stats.html', ca_info=stats)
 
 @bp.route('/logout')
