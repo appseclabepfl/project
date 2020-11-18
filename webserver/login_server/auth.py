@@ -181,7 +181,7 @@ def issue_cert():
             return download
         else: # -> problem revoke anyway and retry
             error = CA_API.revokeCert(username.decode('utf-8'))
-            removeLocalFiles(username.decode('utf-8'))
+            deleteLocalFiles(username.decode('utf-8'))
             error = error or CA_API.getNewCert(new_cert, username.decode('utf-8'))
             if not error:
                 download = send_file(new_cert, as_attachment=True)
