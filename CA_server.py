@@ -6,7 +6,9 @@
 
 import socket, errno
 import ssl
+import sys
 import time
+import traceback
 from threading import Thread
 from threading import Lock
 from os import listdir
@@ -248,30 +250,26 @@ def serve(conn):
         conn.send(CONTINUE.encode())
 
         #retrieve certificate
-
+        log_event("Will receive data")
         try:
             f = open(HOME+"tmp_cert_verification", 'wb')
 
-            data = conn.recv(BUFFER_SIZE)
-
-            while(data):
-                try:
-                    if CONTINUE in data.decode():
-                        f.write(data[:len(data) -8])
-                        break
-                except:
-                    f.write(data)
-                    data = conn.recv(BUFFER_SIZE)
+            data = conn.recv(4*BUFFER_SIZE)
+            f.write(data)
 
             f.close()
 
 
         #verify vertificate and return result
 
-            root_key = serialization.load_pem_private_key(open(KEYS_PATH+"root_private_key.pem", 'rb').read(), None, backend=default_backend())
-            cert = x509.load_pem_x509_certificate(open(HOME+"tmp_cert_verification", 'rb').read(), default_backend())
+            root_cert = read_certificate(CERTIFICATES_PATH+"root_certificate.pem")
+            cert = read_certificate(HOME+"tmp_cert_verification")
 
-            result = verify_certificate(cert, root_key)
+            log_event("Received and loaded everything for verification")
+
+            result = verify_certificate(cert, root_cert)
+
+            log_event("Verification yields : "+str(result)+'\n')
 
             if result:
                 conn.send("True".encode())
@@ -280,8 +278,9 @@ def serve(conn):
 
 
         except Exception as e:
-            print(e.with_traceback())
             log_event("Failed to verify certificate")
+            log_event(traceback.format_exc())
+
 
 
     else:

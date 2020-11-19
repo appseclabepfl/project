@@ -204,7 +204,7 @@ def verify_certificate(cert_bytes):
 
         with context.wrap_socket(sock, server_hostname=CA_IP) as ssock:
 
-            ssock.settimeout(0.3)
+            ssock.settimeout(1)
 
             try:
                 ssock.connect((CA_IP, CA_PORT1))
@@ -222,23 +222,27 @@ def verify_certificate(cert_bytes):
 
                     #send certificate
                     ssock.send(cert_bytes)
+
+                    print("Certificate sent")
                     
                     #retrieve answer
 
                     res = ssock.read(BUFFER_SIZE)
 
+                    print("Got Answer")
+
                     ssock.shutdown(socket.SHUT_RDWR)
                     ssock.close()
 
-                    return res.decode() == "False"
+                    return res.decode() == "True"
                         
                     
             except Exception as e:
                 print(e)
                 print('error while checking certificate validity')
 
-            finally:
-                ssock.shutdown(socket.SHUT_RDWR)
-                ssock.close()
+            
+            ssock.shutdown(socket.SHUT_RDWR)
+            ssock.close()
 
             return False
