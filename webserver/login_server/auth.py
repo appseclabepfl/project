@@ -2,20 +2,17 @@ import functools
 import hashlib
 from  OpenSSL import crypto
 from datetime import datetime
-from flask import send_file
 import os
 import struct
 import base64
 import db_API
 import CA_API
-import re
 from json.decoder import JSONDecodeError
-
-from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for
-)
-
-from werkzeug.utils import secure_filename
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.exceptions import InvalidSignature
+from flask import (Blueprint, flash, g, redirect, render_template, request, session, url_for, send_file)
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -93,13 +90,22 @@ def is_revoked_in_crl(certificate):
 
 
 def is_valid_trust_chain(certificate):
-    f = open("cert/rootCA.crt")
-    root_cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
-    f.close()
-    store = crypto.X509Store()
-    store.add_cert(root_cert)
-    store_ctx = crypto.X509StoreContext(store, certificate)
-    return store_ctx.verify_certificate() == None
+    cert_bytes = crypto.dump_certificate(crypto.FILETYPE_PEM, certificate)
+
+    root_cert = x509.load_pem_x509_certificate(open("cert/rootCA.pem", 'rb').read(), default_backend())
+    test_cert = x509.load_pem_x509_certificate(cert_bytes, default_backend())
+
+    try:
+        root_cert.public_key().verify(
+            test_cert.signature,
+            test_cert.tbs_certificate_bytes,
+            padding.PKCS1v15(),
+            test_cert.signature_hash_algorithm,
+        )
+        return True
+    except InvalidSignature:
+        print("invalid signature")
+        return False
 
 def check_certificate(certB64, responseB64):
     cert_bytes = base64.b64decode(certB64.encode("utf-8"))
