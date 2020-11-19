@@ -255,18 +255,23 @@ def serve(conn):
             data = conn.recv(BUFFER_SIZE)
 
             while(data):
-                f.write(data)
-                data = conn.recv(BUFFER_SIZE)
+                try:
+                    if CONTINUE in data.decode():
+                        f.write(data[:len(data) -8])
+                        break
+                except:
+                    f.write(data)
+                    data = conn.recv(BUFFER_SIZE)
 
             f.close()
 
 
         #verify vertificate and return result
+        
+            root_key = serialization.load_pem_private_key(open(KEYS_PATH+"root_private_key.pem", 'rb').read(), None, backend=default_backend())
+            cert = x509.load_der_x509_certificate(open(HOME+"tmp_cert_verification", 'rb').read(), default_backend())
 
-            root_cert = x509.load_pem_x509_certificate(open(KEYS_PATH+"root_private_key.pem", 'rb').read(), default_backend())
-            cert = x509.load_der_x509_certificate(open(HOME+"tmp_cert_verification", 'rb'), default_backend())
-
-            result = verify_certificate(cert, root_cert)
+            result = verify_certificate(cert, root_key)
 
             if result:
                 conn.send("True".encode())

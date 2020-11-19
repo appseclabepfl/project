@@ -221,9 +221,6 @@ def verify_certificate(cert_bytes):
                 if status.decode() == CONTINUE:
 
                     #send certificate
-
-                    f = open(cert_path, 'rb')
-
                     ssock.send(cert_bytes)
                     
                     #retrieve answer
@@ -238,7 +235,7 @@ def verify_certificate(cert_bytes):
                     
             except Exception as e:
                 print(e)
-                print('error while getting CA stats')
+                print('error while checking certificate validity')
 
             finally:
                 ssock.shutdown(socket.SHUT_RDWR)
