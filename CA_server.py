@@ -44,6 +44,7 @@ SERIAL_NUMBER = CA_DATA_PATH + "serialnb"
 REVOKE_CERT = 'REVOKE'
 NEW_CERT = 'NEW'
 STATS = 'STATS'
+VERIFY = 'VERIFY'
 CONTINUE = 'CONT'
 
 
@@ -241,6 +242,42 @@ def serve(conn):
         stats = "ISSUED CERTS: "+str(get_issued_counter())+", REVOKED CERTS: "+str(get_revoked_counter())+", SERIAL NUMBER: "+str(get_serial_number())
 
         conn.send(stats.encode())
+
+    elif request.decode() == VERIFY:
+
+        conn.send(CONTINUE.encode())
+
+        #retrieve certificate
+
+        try:
+            f = open(HOME+"tmp_cert_verification", 'wb')
+
+            data = conn.recv(BUFFER_SIZE)
+
+            while(data):
+                f.write(data)
+                data = conn.recv(BUFFER_SIZE)
+
+            f.close()
+
+
+        #verify vertificate and return result
+
+            root_cert = x509.load_pem_x509_certificate(open(KEYS_PATH+"root_private_key.pem", 'rb').read(), default_backend())
+            cert = x509.load_der_x509_certificate(open(HOME+"tmp_cert_verification", 'rb'), default_backend())
+
+            result = verify_certificate(cert, root_cert)
+
+            if result:
+                conn.send("True".encode())
+            else:
+                conn.send("False".encode())
+
+
+        except Exception as e:
+            print(e.with_traceback())
+            log_event("Failed to verify certificate")
+
 
     else:
 
