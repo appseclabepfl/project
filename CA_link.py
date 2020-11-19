@@ -198,7 +198,7 @@ def getCAStats():
 #Function to check if a certificate is valid
 #takes fullpath to certificate as argument
 #returns true or false
-def verify_certificate(cert_path):
+def verify_certificate(cert_bytes):
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
 
@@ -224,11 +224,7 @@ def verify_certificate(cert_path):
 
                     f = open(cert_path, 'rb')
 
-                    data = f.read(BUFFER_SIZE)
-                
-                    while(data):
-                        ssock.send(data)
-                        data = f.read(BUFFER_SIZE)
+                    ssock.send(cert_bytes)
                     
                     #retrieve answer
 
