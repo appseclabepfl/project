@@ -17,6 +17,7 @@ from flask import (Blueprint, flash, g, redirect, render_template, request, sess
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 USER_CERT_FOLDER = "cert/users/"
+ADMIN_CERT_PATH = "cert/admin/admin.pem"
 
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
@@ -62,8 +63,7 @@ def admin():
         response = request.form['challenge']
         cert = request.form['certificate']
 
-        # TODO: check if admin user (admin folder)
-        if check_certificate(cert, response):
+        if check_admin_certificate(cert, response):
             session["admin"] = True
             return redirect(url_for('auth.stats'))
         else:
@@ -90,6 +90,15 @@ def is_revoked_in_crl(certificate):
             return True
     return False
 
+def check_admin_certificate(certB64, responseB64):
+    valid = check_certificate(certB64, responseB64)
+
+    cert_bytes = base64.b64decode(certB64.encode("utf-8"))
+    cert = crypto.load_certificate(crypto.FILETYPE_ASN1, cert_bytes)
+    if not os.path.exists(ADMIN_CERT_PATH):
+        return False
+    admin_cert = crypto.load_certificate(crypto.FILETYPE_PEM, open(ADMIN_CERT_PATH).read())
+    return admin_cert.get_serial_number() == cert.get_serial_number()
 
 def check_certificate(certB64, responseB64):
     cert_bytes = base64.b64decode(certB64.encode("utf-8"))
