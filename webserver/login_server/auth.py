@@ -16,6 +16,8 @@ from flask import (Blueprint, flash, g, redirect, render_template, request, sess
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
+USER_CERT_FOLDER = "cert/users/"
+
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
     if request.method == 'POST':
@@ -76,7 +78,7 @@ def extract_uid(cert):
     return "UNKNOWN_USER".encode('utf-8')
 
 def is_revoked_in_crl(certificate):
-    f = open("cert/crl.pem")
+    f = open(CA_API.CRL_PATH)
     crl = crypto.load_crl(crypto.FILETYPE_PEM, f.read())
     f.close()
 
@@ -88,27 +90,6 @@ def is_revoked_in_crl(certificate):
             return True
     return False
 
-
-def is_valid_trust_chain(certificate):
-    #cert_bytes = crypto.dump_certificate(crypto.FILETYPE_PEM, certificate)
-    # in check_certificate(), pass 'cert' to this function as arg instead of 'cert_bytes'
-    # to have an openSSL cert object which we can dump to PEM format bytes and then load with
-    # x509.load_pem_x509_certificate() instead of x509.load_der_x509_certificate()
-
-    root_cert = x509.load_pem_x509_certificate(open("cert/rootCA.pem", 'rb').read(), default_backend())
-    test_cert = x509.load_der_x509_certificate(certificate, default_backend())
-
-    try:
-        root_cert.public_key().verify(
-            test_cert.signature,
-            test_cert.tbs_certificate_bytes,
-            padding.PKCS1v15(),
-            test_cert.signature_hash_algorithm,
-        )
-        return True
-    except InvalidSignature:
-        print("Could not verify certificate with rootCA.pem")
-        return False
 
 def check_certificate(certB64, responseB64):
     cert_bytes = base64.b64decode(certB64.encode("utf-8"))
@@ -126,8 +107,8 @@ def check_certificate(certB64, responseB64):
     if is_revoked_in_crl(cert):
         return False
 
-    # Check chain of trust
-    if not is_valid_trust_chain(cert_bytes):
+    # Check that cert comes from CA
+    if not CA_API.verify_certificate(crypto.dump_certificate(crypto.FILETYPE_PEM, cert)):
         return False
 
     # Set user_id for the login session
@@ -219,7 +200,7 @@ def issue_cert():
     password = request.form['password2'].encode('utf-8')
 
     if db_API.check_password(username, password, g.db_context):
-        new_cert = f"cert/users/{username.decode('utf-8')}.p12"
+        new_cert = f"{USER_CERT_FOLDER}{username.decode('utf-8')}.p12"
         if not CA_API.getNewCert(new_cert, username.decode('utf-8')):
             download = send_file(new_cert, as_attachment=True) # No problem -> download new cert
             replacePKCSwithCert(new_cert)
@@ -250,7 +231,7 @@ def replacePKCSwithCert(filepath):
         os.remove(filepath)
 
 def deleteLocalFiles(uid):
-    filepath = f"cert/users/{uid}.pem"
+    filepath = f"{USER_CERT_FOLDER}{uid}.pem"
     if os.path.exists(filepath):
         os.remove(filepath)
     filepath = filepath.replace(".pem",".p12")
@@ -340,7 +321,7 @@ def human_readable(date_bytes):
 
 def get_user_certificate():
     username = session['user_id'].decode('utf-8')
-    filepath = f"cert/users/{username}.pem"
+    filepath = f"{USER_CERT_FOLDER}{username}.pem"
 
     if os.path.exists(filepath):
         cert = crypto.load_certificate(crypto.FILETYPE_PEM, open(filepath).read())

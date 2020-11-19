@@ -12,6 +12,7 @@ REVOKE_CERT = 'REVOKE'
 NEW_CERT = 'NEW'
 STATS = 'STATS'
 CONTINUE= 'CONT'
+VERIFY = 'VERIFY'
 
 
 #messages sent by server
@@ -180,3 +181,46 @@ def getCAStats():
                 return CA_stats
 
 
+#Function to check if a certificate is valid
+#takes fullpath to certificate as argument
+#returns true or false
+def verify_certificate(cert_bytes):
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
+
+        with context.wrap_socket(sock, server_hostname=CA_IP) as ssock:
+
+            ssock.settimeout(0.3)
+            
+            try:
+                ssock.connect((CA_IP, CA_PORT))
+                
+                #send instruction                             
+                ssock.send(VERIFY.encode())
+
+                status = ssock.recv(BUFFER_SIZE)
+
+                if status.decode() == CONTINUE:
+
+                    #send certificate
+                    ssock.send(cert_bytes)
+                    
+                    #retrieve answer
+
+                    res = ssock.read(BUFFER_SIZE)
+
+                    ssock.shutdown(socket.SHUT_RDWR)
+                    ssock.close()
+
+                    return res.decode() == "False"
+                        
+                    
+            except Exception as e:
+                print(e)
+                print('error while checking certificate validity')
+
+            finally:
+                ssock.shutdown(socket.SHUT_RDWR)
+                ssock.close()
+
+            return False
