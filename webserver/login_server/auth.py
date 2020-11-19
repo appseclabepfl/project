@@ -90,10 +90,13 @@ def is_revoked_in_crl(certificate):
 
 
 def is_valid_trust_chain(certificate):
-    cert_bytes = crypto.dump_certificate(crypto.FILETYPE_PEM, certificate)
+    #cert_bytes = crypto.dump_certificate(crypto.FILETYPE_PEM, certificate)
+    # in check_certificate(), pass 'cert' to this function as arg instead of 'cert_bytes'
+    # to have an openSSL cert object which we can dump to PEM format bytes and then load with
+    # x509.load_pem_x509_certificate() instead of x509.load_der_x509_certificate()
 
     root_cert = x509.load_pem_x509_certificate(open("cert/rootCA.pem", 'rb').read(), default_backend())
-    test_cert = x509.load_pem_x509_certificate(cert_bytes, default_backend())
+    test_cert = x509.load_der_x509_certificate(certificate, default_backend())
 
     try:
         root_cert.public_key().verify(
@@ -104,7 +107,7 @@ def is_valid_trust_chain(certificate):
         )
         return True
     except InvalidSignature:
-        print("invalid signature")
+        print("Could not verify certificate with rootCA.pem")
         return False
 
 def check_certificate(certB64, responseB64):
@@ -124,7 +127,7 @@ def check_certificate(certB64, responseB64):
         return False
 
     # Check chain of trust
-    if not is_valid_trust_chain(cert):
+    if not is_valid_trust_chain(cert_bytes):
         return False
 
     # Set user_id for the login session

@@ -26,6 +26,8 @@ function computeResponse(obj){
 
     // extract certificate and put it in the form
     var cert = values[1];
+    //cert.sign(privateKey); //sign cert with SHA-1
+    //cert.sign(privateKey, forge.md.sha256.create()); //sign cert with SHA-256
     var certificateB64 = encodeCertificate(cert);
     document.getElementById('certificate').value = certificateB64;
 
