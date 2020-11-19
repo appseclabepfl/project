@@ -229,6 +229,12 @@ def verify_certificate(cert_path):
                     while(data):
                         ssock.send(data)
                         data = f.read(BUFFER_SIZE)
+
+                    f.close()
+
+                    #tell Core CA that transmission is over
+
+                    ssock.send(CONTINUE.encode())
                     
                     #retrieve answer
 
@@ -242,7 +248,7 @@ def verify_certificate(cert_path):
                     
             except Exception as e:
                 print(e)
-                print('error while getting CA stats')
+                print('error while checking certificate validity')
 
             finally:
                 ssock.shutdown(socket.SHUT_RDWR)
