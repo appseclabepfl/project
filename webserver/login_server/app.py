@@ -2,6 +2,7 @@ import os
 
 from flask import Flask
 from flask import jsonify
+import logging
 
 import auth
 import ssl_cert
@@ -9,7 +10,6 @@ import ssl_cert
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_mapping(
     SECRET_KEY='dev',
-    MAX_CONTENT_LENGTH=5*1024, #max file size for upload 5 kB
 )
 
 # ensure the instance folder exists
@@ -17,6 +17,12 @@ try:
     os.makedirs(app.instance_path)
 except OSError:
     pass
+
+# Save logs to file
+logger = logging.getLogger('werkzeug')
+handler = logging.FileHandler('webserver.log')
+logger.addHandler(handler)
+app.logger.addHandler(handler)
 
 @app.route('/')
 def index():

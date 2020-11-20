@@ -2,19 +2,22 @@ import functools
 import hashlib
 from  OpenSSL import crypto
 from datetime import datetime
-from flask import send_file
 import os
 import struct
 import base64
 import db_API
-
-from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for
-)
-
-from werkzeug.utils import secure_filename
+import CA_API
+from json.decoder import JSONDecodeError
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.exceptions import InvalidSignature
+from flask import (Blueprint, flash, g, redirect, render_template, request, session, url_for, send_file)
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+USER_CERT_FOLDER = "cert/users/"
+ADMIN_CERT_PATH = "cert/admin/admin.pem"
 
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
@@ -24,7 +27,6 @@ def login():
 
         error = None
 
-#        if True:
         if not db_API.check_password(username, password, g.db_context):
             error = 'Invalid login.'
 
@@ -61,8 +63,7 @@ def admin():
         response = request.form['challenge']
         cert = request.form['certificate']
 
-        # TODO: check if admin user (admin folder)
-        if check_certificate(cert, response):
+        if check_admin_certificate(cert, response):
             session["admin"] = True
             return redirect(url_for('auth.stats'))
         else:
@@ -73,21 +74,52 @@ def admin():
 def extract_uid(cert):
     for name, value in cert.get_subject().get_components():
         if name.decode("utf-8") == "UID":
-            return value.decode("utf-8")
-    return "UNKNOWN_USER"
+            return value
+    return "UNKNOWN_USER".encode('utf-8')
 
-def check_certificate(certB64, responseB64):
-    #TODO Check if cert in CRL (+ notBefore and notAfter dates?) 
+def is_revoked_in_crl(certificate):
+    f = open(CA_API.CRL_PATH)
+    crl = crypto.load_crl(crypto.FILETYPE_PEM, f.read())
+    f.close()
+
+    revokations = crl.get_revoked()
+    for revok in revokations:
+        revok_serial = int(revok.get_serial().decode('ASCII'), 16) #It is a hex nb encoded in ASCII
+        cert_serial = certificate.get_serial_number() #It is an int
+        if revok_serial == cert_serial:
+            return True
+    return False
+
+def check_admin_certificate(certB64, responseB64):
+    valid = check_certificate(certB64, responseB64)
 
     cert_bytes = base64.b64decode(certB64.encode("utf-8"))
     cert = crypto.load_certificate(crypto.FILETYPE_ASN1, cert_bytes)
+    if not os.path.exists(ADMIN_CERT_PATH):
+        return False
+    admin_cert = crypto.load_certificate(crypto.FILETYPE_PEM, open(ADMIN_CERT_PATH).read())
+    return admin_cert.get_serial_number() == cert.get_serial_number()
+
+def check_certificate(certB64, responseB64):
+    cert_bytes = base64.b64decode(certB64.encode("utf-8"))
+    cert = crypto.load_certificate(crypto.FILETYPE_ASN1, cert_bytes)
+
+     # Check signature is valid
     signature = base64.b64decode(responseB64.encode("utf-8"))
 
     try:
         crypto.verify(cert, signature, str(session["challenge"]), "sha256")
     except crypto.Error: # invalid signature
         return False
-    
+
+    # Check CRL
+    if is_revoked_in_crl(cert):
+        return False
+
+    # Check that cert comes from CA
+    if not CA_API.verify_certificate(crypto.dump_certificate(crypto.FILETYPE_PEM, cert)):
+        return False
+
     # Set user_id for the login session
     session.clear()
     session['user_id'] = extract_uid(cert)
@@ -124,8 +156,10 @@ def load_logged_in_user_data(user_id):
     if user_id is None:
         g.user = None
     else:
-        user_data = db_API.get_user_data(user_id, g.db_context)
-        #user_data = dict(uid="username_placeholder", firstname="firstname_placeholder", lastname="lastname_placeholder", email="email_placeholder")
+        try:
+            user_data = db_API.get_user_data(user_id, g.db_context)
+        except JSONDecodeError:
+            user_data = None
         if user_data is not None: #if uid not in DB
             g.user = user_data
 
@@ -175,13 +209,43 @@ def issue_cert():
     password = request.form['password2'].encode('utf-8')
 
     if db_API.check_password(username, password, g.db_context):
-        # TODO send certificate issuing request to coreCA
-        # + revoke current certificate if there is one
-        # And return real certificate instead of placeholder
-        return send_file("cert/server.crt", as_attachment=True)
+        new_cert = f"{USER_CERT_FOLDER}{username.decode('utf-8')}.p12"
+        if not CA_API.getNewCert(new_cert, username.decode('utf-8')):
+            download = send_file(new_cert, as_attachment=True) # No problem -> download new cert
+            replacePKCSwithCert(new_cert)
+            return download
+        else: # -> problem revoke anyway and retry
+            error = CA_API.revokeCert(username.decode('utf-8'))
+            deleteLocalFiles(username.decode('utf-8'))
+            error = error or CA_API.getNewCert(new_cert, username.decode('utf-8'))
+            if not error:
+                download = send_file(new_cert, as_attachment=True)
+                replacePKCSwithCert(new_cert)
+                return download
+            else:
+                flash("Failed to issue a new certificate")
     else:
         flash("Invalid password...")
         return render_template('auth/user.html')
+
+def replacePKCSwithCert(filepath):
+    new_file = filepath.replace(".p12", ".pem")
+    if os.path.exists(filepath):
+        # Save certificate to disk
+        p12 = crypto.load_pkcs12(open(filepath, 'rb').read())
+        cert = crypto.dump_certificate(crypto.FILETYPE_PEM, p12.get_certificate())
+        with open(new_file, 'wb') as f:
+            f.write(cert)
+        # Remove PKCS#12 from disk
+        os.remove(filepath)
+
+def deleteLocalFiles(uid):
+    filepath = f"{USER_CERT_FOLDER}{uid}.pem"
+    if os.path.exists(filepath):
+        os.remove(filepath)
+    filepath = filepath.replace(".pem",".p12")
+    if os.path.exists(filepath):
+        os.remove(filepath)
 
 @bp.route('/revoke_cert', methods=['POST'])
 @login_required
@@ -190,8 +254,11 @@ def revoke_cert():
     password = request.form['password3'].encode('utf-8')
 
     if db_API.check_password(username, password, g.db_context):
-        # TODO send revokation request to coreCA
-        flash("Certificate revoked...")
+        if CA_API.revokeCert(username.decode('utf-8')):
+            flash("Revokation failed")
+        else:
+            deleteLocalFiles(username.decode('utf-8'))
+            flash("Certificate revoked...")
     else:
         flash("Invalid password...")
     return render_template('auth/user.html')
@@ -205,8 +272,13 @@ def user():
 @bp.route('/stats', methods=['GET'])
 @admin_required
 def stats():
-    # TODO: get real stats from core_CA
-    stats = dict(issued=0, revoked=0, serialNumber=0)
+    raw_stats = CA_API.getCAStats()
+    splitted = raw_stats.split(",")
+    print(splitted)
+    stat_issued = splitted[0].replace("ISSUED CERTS: ", "")
+    stat_revoked = splitted[1].replace("REVOKED CERTS: ", "")
+    stat_serial = splitted[2].replace("SERIAL NUMBER: ", "")
+    stats = dict(issued=stat_issued, revoked=stat_revoked, serialNumber=stat_serial)
     return render_template('auth/stats.html', ca_info=stats)
 
 @bp.route('/logout')
@@ -257,21 +329,19 @@ def human_readable(date_bytes):
     return datetime.strptime(date_bytes.decode('ascii'), '%Y%m%d%H%M%SZ')
 
 def get_user_certificate():
-    #TODO: get real cert from coreCA
+    username = session['user_id'].decode('utf-8')
+    filepath = f"{USER_CERT_FOLDER}{username}.pem"
 
-    # PLACEHOLDER CERTIFICATE
-    cert = crypto.load_certificate(
-        crypto.FILETYPE_PEM, 
-        open('cert/rootCA.crt').read()
-    )
-    start_date = human_readable(cert.get_notBefore())
-    end_date = human_readable(cert.get_notAfter())
-    serial = str(cert.get_serial_number())
-    sha1 = cert.digest("sha1").decode("utf-8")
-    
-    # The dict structure (notBefore, notAfterm serialNumber, fingerprint) is used in the html template, do not change!
-    certificate = dict(notBefore=start_date, notAfter=end_date, serialNumber=serial, fingerprint=sha1)
-    return certificate
+    if os.path.exists(filepath):
+        cert = crypto.load_certificate(crypto.FILETYPE_PEM, open(filepath).read())
+        start_date = human_readable(cert.get_notBefore())
+        end_date = human_readable(cert.get_notAfter())
+        serial = str(cert.get_serial_number())
+        sha1 = cert.digest("sha1").decode("utf-8")
+        # The dict structure (notBefore, notAfterm serialNumber, fingerprint) is used in the html template, do not change!
+        return dict(notBefore=start_date, notAfter=end_date, serialNumber=serial, fingerprint=sha1)
+    else:
+        return None
 
 def random_challenge():
     # Random int from os.urandom() -> crypto secure
