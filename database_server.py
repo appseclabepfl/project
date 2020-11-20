@@ -5,6 +5,7 @@ import base64
 import mysql.connector.pooling
 import json
 from threading import Thread
+import datetime
 
 # TLS Constants
 WEBSERVER_IP = '10.10.20.2'
@@ -16,6 +17,9 @@ BUFFER_SIZE = 1024
 CHECK_PASSWORD = 'CHECK_PASSWORD'
 GET_USER_DATA = 'GET_USER_DATA'
 UPDATE_USER_DATA = 'UPDATE_USER_DATA'
+
+# Log path
+LOG_PATH = "/home/database/queries_log"
 
 # Error messages
 NO_DB_CNX = 'No database connection available'
@@ -31,12 +35,28 @@ dbconfig = {
 
 cnxpool = mysql.connector.pooling.MySQLConnectionPool(pool_name="webserver_pool", pool_size=5, **dbconfig)
 
+# Returns actual time and date
+def get_timestamp():
+	now = datetime.datetime.now()
+	return now.strftime("%d.%m.%Y%H:%M:%S")
+
+# Write event in log file
+def log_event(event):
+	f = open(LOG_PATH,'a')
+	
+	f.writelines(event+", time and date : "+get_timestamp()+"\n")
+
+	f.close()
+	return
+
 # Returns code 0 on success, 1 on non matching hashes or error
 def check_password(username_password, cnx):
     username, password = base64.b64decode(username_password).split(':')
 
     sql_prepared_statement = """SELECT pwd FROM users WHERE uid = %s"""
     cursor = cnx.cursor(prepared=True)
+
+    log_event(username+" : "+sql_prepared_statement)
 
     try:
         cursor.execute(sql_prepared_statement, (username,))
@@ -56,6 +76,8 @@ def get_user_data(username, cnx):
 
     sql_prepared_statement = """SELECT uid, lastname, firstname, email FROM users WHERE uid = %s"""
     cursor = cnx.cursor(prepared=True)
+
+    log_event(base64.b64decode(username)+" : "+sql_prepared_statement)
 
     try:
         cursor.execute(sql_prepared_statement, (base64.b64decode(username),))
@@ -102,6 +124,8 @@ def update_user_data(json_payload, cnx):
                       json_payload["firstname"], json_payload["email"],
                       json_payload["uid"])
 
+            log_event(json_payload["uid"]+" : "+sql_prepared_statement)
+
             try:
                 cursor.execute(sql_prepared_statement, params)
                 cnx.commit()
@@ -114,6 +138,9 @@ def update_user_data(json_payload, cnx):
             params = (json_payload["uid"], json_payload["lastname"],
                       json_payload["firstname"], json_payload["email"],
                       json_payload["pwd"], json_payload["uid"])
+
+            log_event(json_payload["uid"]+" : "+sql_prepared_statement)			
+		
             try:
                 cursor.execute(sql_prepared_statement, params)
                 cnx.commit()

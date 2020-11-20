@@ -16,8 +16,8 @@ from tools import *
 
 context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
 context.options |= (ssl.OP_NO_SSLv3 | ssl.OP_NO_SSLv2 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_TLSv1_2)
-context.load_cert_chain('/home/coreca/CA_certificate.pem', '/home/coreca/CA_TLS_pk.key')       #Path to certificates for TLS comunication
-context.load_verify_locations('/home/coreca/rootCA.pem')      #path to certificate for TLS 
+context.load_cert_chain('/home/database/database_TLS.pem', '/home/database/database_TLS.key')       #Path to certificates for TLS comunication
+context.load_verify_locations('/home/database/rootCA.pem')      #path to certificate for TLS 
 context.set_ciphers('ECDHE-RSA-AES256-SHA384')
 context.verify_mode = ssl.CERT_REQUIRED
 
@@ -27,24 +27,23 @@ BACKUP_PORT = 5555
 BUFFER_SIZE = 1024
 
 #Paths
-HOME_DIR = '/home/coreca/'
+HOME_DIR = '/home/database/'
 
 #Path to watch
-CERTS = HOME_DIR+"certificates"
-KEYS = HOME_DIR+"keys"
-DATA = HOME_DIR+"data"
-TLS_KEY = HOME_DIR+"CA_TLS_pk.key"
 LOGAUTH = "/var/log/auth.log"
 LOGWTMP =  "/var/log/wtmp"
 LOGLASTLOG = "/var/log/lastlog"
-CODE = HOME_DIR+"CA_server.py"
-CALOGS = HOME_DIR+"CA_server_logs"
+CODE = HOME_DIR+"database_server.py"
+LOGS = HOME_DIR+"queries_log"
+DUMP = HOME_DIR+"sql.dump"
+USERS_MANAGE = HOME_DIR+"database_users_manage.sql"
+SERVER_CONF = HOME_DIR+"mysql_server_conf.sh"
 
-PATHS = [CERTS, KEYS, DATA, TLS_KEY, LOGAUTH, LOGLASTLOG, LOGWTMP, CODE,CALOGS]
+PATHS = [LOGAUTH, LOGLASTLOG, LOGWTMP, CODE, LOGS, DUMP, USERS_MANAGE, SERVER_CONF]
 
 
 #Private Key Path
-backup_key_path = '/home/coreca/backup_key'
+backup_key_path = '/home/database/backup_key'
 
 
 #Watchers and Event Handlers 
@@ -108,7 +107,7 @@ class WatcherThread(Thread):
 # return true if it is sensible data
 def isSensible(name):
 
-    if (".key" in name or "private" in name):
+    if (".dump" in name or "private" in name):
         return True
     
     return False

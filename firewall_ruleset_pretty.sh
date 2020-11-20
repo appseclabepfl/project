@@ -28,6 +28,8 @@
 /sbin/iptables -A FORWARD -i enp0s9 -o enp0s8 -p tcp -s 10.10.10.2 --sport 42069 -d 10.10.20.2 -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s8 -o enp0s9 -p tcp -s 10.10.20.2 -d 10.10.10.3 --dport 6000 -j ACCEPT
 /sbin/iptables -A FORWARD -i enp0s9 -o enp0s8 -p tcp -s 10.10.10.3 --sport 6000 -d 10.10.20.2 -j ACCEPT
+/sbin/iptables -A FORWARD -i enp0s8 -o enp0s9 -p tcp -s 10.10.20.2 -d 10.10.10.4 --dport 5555 -j ACCEPT
+/sbin/iptables -A FORWARD -i enp0s9 -o enp0s8 -p tcp -s 10.10.10.4 --sport 5555 -d 10.10.20.2 -j ACCEPT
 
 ### ssh access for admin ###
 /sbin/iptables -A FORWARD -i enp0s3 -o enp0s8 -p tcp -d 10.10.20.2 --dport ssh -j ACCEPT
