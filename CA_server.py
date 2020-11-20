@@ -6,7 +6,9 @@
 
 import socket, errno
 import ssl
+import sys
 import time
+import traceback
 from threading import Thread
 from threading import Lock
 from os import listdir
@@ -44,6 +46,7 @@ SERIAL_NUMBER = CA_DATA_PATH + "serialnb"
 REVOKE_CERT = 'REVOKE'
 NEW_CERT = 'NEW'
 STATS = 'STATS'
+VERIFY = 'VERIFY'
 CONTINUE = 'CONT'
 
 
@@ -64,7 +67,7 @@ def log_event(event):
 
     f = open(LOG_PATH, 'a')
 
-    f.writelines(event+", time and date : "+get_timestamp())
+    f.writelines(event+", time and date : "+get_timestamp()+"\n")
 
     f.close()
     return
@@ -241,6 +244,44 @@ def serve(conn):
         stats = "ISSUED CERTS: "+str(get_issued_counter())+", REVOKED CERTS: "+str(get_revoked_counter())+", SERIAL NUMBER: "+str(get_serial_number())
 
         conn.send(stats.encode())
+
+    elif request.decode() == VERIFY:
+
+        conn.send(CONTINUE.encode())
+
+        #retrieve certificate
+        log_event("Will receive data")
+        try:
+            f = open(HOME+"tmp_cert_verification", 'wb')
+
+            data = conn.recv(4*BUFFER_SIZE)
+            f.write(data)
+
+            f.close()
+
+
+        #verify vertificate and return result
+
+            root_cert = read_certificate(CERTIFICATES_PATH+"root_certificate.pem")
+            cert = read_certificate(HOME+"tmp_cert_verification")
+
+            log_event("Received and loaded everything for verification")
+
+            result = verify_certificate(cert, root_cert)
+
+            log_event("Verification yields : "+str(result)+'\n')
+
+            if result:
+                conn.send("True".encode())
+            else:
+                conn.send("False".encode())
+
+
+        except Exception as e:
+            log_event("Failed to verify certificate")
+            log_event(traceback.format_exc())
+
+
 
     else:
 
