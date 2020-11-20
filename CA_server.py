@@ -67,7 +67,7 @@ def log_event(event):
 
     f = open(LOG_PATH, 'a')
 
-    f.writelines(event+", time and date : "+get_timestamp())
+    f.writelines(event+", time and date : "+get_timestamp()+"\n")
 
     f.close()
     return
