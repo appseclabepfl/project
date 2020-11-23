@@ -206,18 +206,19 @@ def update_info():
 @login_required
 def issue_cert():
     username = session['user_id']
+    infos = g.user['uid']+","+g.user['firstname']+","+g.user['lastname']+","+g.user['email']
     password = request.form['password2'].encode('utf-8')
 
     if db_API.check_password(username, password, g.db_context):
         new_cert = f"{USER_CERT_FOLDER}{username.decode('utf-8')}.p12"
-        if not CA_API.getNewCert(new_cert, username.decode('utf-8')):
+        if not CA_API.getNewCert(new_cert, infos):
             download = send_file(new_cert, as_attachment=True) # No problem -> download new cert
             replacePKCSwithCert(new_cert)
             return download
         else: # -> problem revoke anyway and retry
             error = CA_API.revokeCert(username.decode('utf-8'))
             deleteLocalFiles(username.decode('utf-8'))
-            error = error or CA_API.getNewCert(new_cert, username.decode('utf-8'))
+            error = error or CA_API.getNewCert(new_cert, infos)
             if not error:
                 download = send_file(new_cert, as_attachment=True)
                 replacePKCSwithCert(new_cert)
