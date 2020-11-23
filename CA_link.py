@@ -39,7 +39,7 @@ CRL_PATH = "/home/webserver/crl.pem"
 
 
 
-#function to ask for a new certificate userinfo is in csv
+#function to ask for a new certificate
 #return -1 in case of error, 0 otherwise
 def getNewCert(savePath, userInfo):  
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
