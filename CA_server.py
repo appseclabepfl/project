@@ -163,6 +163,12 @@ def remove_key(filename):
     return
 
 
+#split csv string
+def getInfosFromCSV(infos):
+
+    return infos.split(',')
+
+
 #function that will communicate with the webserver and call the core CA functions
 def serve(conn):
 
@@ -208,34 +214,43 @@ def serve(conn):
 
     elif request.decode() == NEW_CERT:       #launch creation of new certificate
 
-        conn.send(CONTINUE.encode())
+        try:
+            conn.send(CONTINUE.encode())
 
-        #listen for user informations (should be less than 1024 byte)
-        uid = conn.recv(BUFFER_SIZE)
+            #listen for user informations (should be less than 1024 byte)
+            info = conn.recv(BUFFER_SIZE)
 
-        #check that certificate not already issued.
-        if get_certificate_by_user_id(uid.decode()) != None:
-            conn.send(ALREADY_ISSUED_ERROR.encode())
-            conn.close()
-            return
+            infoArray = getInfosFromCSV(info.decode())
 
-        #issue certificate
-        cert, _ = certificate_issuing(uid.decode())
+            #check that certificate not already issued.
+            if get_certificate_by_user_id(infoArray[0]) != None:
+                conn.send(ALREADY_ISSUED_ERROR.encode())
+                conn.close()
+                return
 
-        #store serial number of new cert in file
-        set_serial_number(cert.serial_number)
+            #issue certificate
+            cert, _ = certificate_issuing(infoArray[0], infoArray[1], infoArray[2], infoArray[3])
 
-        pkcs12 = create_pkcs12_bytes(ISSUED_PATH+get_certificate_name(cert), KEYS_PATH+uid.decode()+"private_key"+".pem")
 
-        #send certificate (small so don't need to put buffer)
-        conn.send(pkcs12)
+            #store serial number of new cert in file
+            set_serial_number(cert.serial_number)
 
-        #remove private keys
-        t = DelayedRemoveThread(10, uid.decode()+"private_key"+".pem")
-        t.start()
+            pkcs12 = create_pkcs12_bytes(ISSUED_PATH+get_certificate_name(cert), KEYS_PATH+infoArray[0]+"private_key"+".pem")
 
-        #increase the counter of issued certificates
-        increase_issued_counter()
+            #send certificate (small so don't need to put buffer)
+            conn.send(pkcs12)
+
+            #remove private keys
+            t = DelayedRemoveThread(10, infoArray[0]+"private_key"+".pem")
+            t.start()
+
+            #increase the counter of issued certificates
+            increase_issued_counter()
+
+        except:
+            
+            log_event(traceback.format_exc())
+            log_event("Failed to issue certificate")
 
     elif request.decode() == STATS:
 

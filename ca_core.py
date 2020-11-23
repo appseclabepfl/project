@@ -444,7 +444,7 @@ def create_root_certificate(root_certificate_file=None, root_private_key_file=No
     return root_certificate, root_key
 
 
-def certificate_issuing(user_id, root_certificate_file=ROOT_CERTIFICATE_PATH,
+def certificate_issuing(user_id, user_first_name, user_last_name, user_email, root_certificate_file=ROOT_CERTIFICATE_PATH,
                         root_private_key_file="root_private_key.pem", validity=30):
     """
     Create new certificate signed form the CA
@@ -479,8 +479,6 @@ def certificate_issuing(user_id, root_certificate_file=ROOT_CERTIFICATE_PATH,
     # Connect to the database and check user_id, user_pwd_hash
 
     root_certificate = read_certificate(root_certificate_file)
-
-    user_last_name, user_first_name, user_email = get_user_attributes_dummy(user_id)
 
     certificate_key = generate_rsa_private_key()
 
