@@ -39,9 +39,9 @@ CRL_PATH = "/home/webserver/crl.pem"
 
 
 
-#function to ask for a new certificate
+#function to ask for a new certificate userinfo is in csv
 #return -1 in case of error, 0 otherwise
-def getNewCert(savePath, userInfo):   #TODO what information should we give to the CA to generate certs ? email name surname etc...
+def getNewCert(savePath, userInfo):  
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
 
         with context.wrap_socket(sock, server_hostname=CA_IP) as ssock:

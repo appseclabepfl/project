@@ -163,6 +163,12 @@ def remove_key(filename):
     return
 
 
+#split csv string
+def getInfosFromCSV(infos):
+
+    return infos.split(',')
+
+
 #function that will communicate with the webserver and call the core CA functions
 def serve(conn):
 
@@ -211,16 +217,18 @@ def serve(conn):
         conn.send(CONTINUE.encode())
 
         #listen for user informations (should be less than 1024 byte)
-        uid = conn.recv(BUFFER_SIZE)
+        info = conn.recv(BUFFER_SIZE)
+
+        infoArray = getInfosFromCSV(info.decode())
 
         #check that certificate not already issued.
-        if get_certificate_by_user_id(uid.decode()) != None:
+        if get_certificate_by_user_id(infoArray[0]) != None:
             conn.send(ALREADY_ISSUED_ERROR.encode())
             conn.close()
             return
 
         #issue certificate
-        cert, _ = certificate_issuing(uid.decode())
+        cert, _ = certificate_issuing(infoArray[0], infoArray[1], infoArray[2], infoArray[3])
 
         #store serial number of new cert in file
         set_serial_number(cert.serial_number)
